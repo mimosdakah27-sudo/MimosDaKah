@@ -61,3 +61,4 @@ Os componentes em `components/ui/*` seguem o padrão shadcn. Para trocar pelos o
 npx shadcn@latest init
 npx shadcn@latest add button input card label textarea badge sonner
 ```
+# mimosdakah
