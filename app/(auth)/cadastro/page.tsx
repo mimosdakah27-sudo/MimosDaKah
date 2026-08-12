@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import { SignupFormData, signupSchema } from "./types/auth";
 
 export default function SignupForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -32,7 +34,9 @@ export default function SignupForm() {
   const mutation = useMutation({
     mutationFn: signupUser,
     onSuccess: () => {
-      toast.success("Conta criada! Verifique seu e-mail.");
+      toast.success("Conta criada e sessão iniciada com sucesso!");
+      router.push("/");
+      router.refresh();
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -61,17 +65,13 @@ export default function SignupForm() {
       >
         {/* Nome */}
         <div className="space-y-2">
-          <Label
-            htmlFor="name"
-            className="font-bold text-xs uppercase tracking-widest text-muted-foreground"
-          >
+          <Label htmlFor="name">
             Nome Completo
           </Label>
           <Input
             id="name"
             placeholder="Gabriel Lingnau"
             {...register("name")}
-            className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-background transition-all"
           />
           {errors.name && (
             <p className="text-xs font-bold text-destructive">
@@ -82,10 +82,7 @@ export default function SignupForm() {
 
         {/* Email */}
         <div className="space-y-2">
-          <Label
-            htmlFor="email"
-            className="font-bold text-xs uppercase tracking-widest text-muted-foreground"
-          >
+          <Label htmlFor="email">
             E-mail
           </Label>
           <Input
@@ -93,7 +90,6 @@ export default function SignupForm() {
             type="email"
             placeholder="exemplo@email.com"
             {...register("email")}
-            className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-background transition-all"
           />
           {errors.email && (
             <p className="text-xs font-bold text-destructive">
@@ -104,10 +100,7 @@ export default function SignupForm() {
 
         {/* Telefone */}
         <div className="space-y-2">
-          <Label
-            htmlFor="phone"
-            className="font-bold text-xs uppercase tracking-widest text-muted-foreground"
-          >
+          <Label htmlFor="phone">
             Telefone
           </Label>
           <Input
@@ -115,7 +108,6 @@ export default function SignupForm() {
             type="tel"
             placeholder="(00) 99999-9999"
             {...register("phone", { onChange: handlePhoneChange })}
-            className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-background transition-all"
           />
           {errors.phone && (
             <p className="text-xs font-bold text-destructive">
@@ -126,10 +118,7 @@ export default function SignupForm() {
 
         {/* Senha */}
         <div className="space-y-2">
-          <Label
-            htmlFor="password"
-            className="font-bold text-xs uppercase tracking-widest text-muted-foreground"
-          >
+          <Label htmlFor="password">
             Senha
           </Label>
           <div className="relative">
@@ -137,14 +126,14 @@ export default function SignupForm() {
               id="password"
               type={showPassword ? "text" : "password"}
               placeholder="••••••••"
+              className="pr-10"
               {...register("password")}
-              className="h-12 rounded-xl bg-muted/50 border-transparent pr-12 focus:bg-background transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-              className="absolute top-1/2 right-2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-lg"
+              className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -158,7 +147,7 @@ export default function SignupForm() {
 
         <Button
           type="submit"
-          className="h-12 w-full font-bold rounded-xl shadow-xl shadow-primary/20 transition-all active:scale-95 bg-white text-black hover:bg-white/90"
+          className="w-full"
           disabled={mutation.isPending}
         >
           {mutation.isPending ? (

@@ -34,34 +34,33 @@ export default function LoginPage() {
 
       <form onSubmit={onSubmit} className="space-y-6">
         <div className="space-y-2">
-          <Label htmlFor="email" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">E-mail</Label>
+          <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
             type="email"
             placeholder="exemplo@email.com"
             {...register("email", { onChange: handleInputChange })}
-            className="h-12 rounded-xl bg-muted/50 border-transparent focus:bg-background transition-all"
           />
           {errors.email && <p className="text-xs font-bold text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Senha</Label>
+            <Label htmlFor="password">Senha</Label>
             <Link href="/forgot-password" className="text-xs font-bold text-primary hover:underline">Esqueceu?</Link>
           </div>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
+              className="pr-10"
               {...register("password", { onChange: handleInputChange })}
-              className="h-12 rounded-xl bg-muted/50 border-transparent pr-12 focus:bg-background transition-all"
             />
             <button
               type="button"
               onClick={togglePassword}
               aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-              className="absolute top-1/2 right-2 -translate-y-1/2 h-10 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-lg"
+              className="absolute top-1/2 right-2 -translate-y-1/2 h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -71,7 +70,7 @@ export default function LoginPage() {
 
         <Button 
           type="submit" 
-          className="h-12 w-full font-bold rounded-xl shadow-xl shadow-primary/20 transition-all active:scale-95 bg-primary text-white hover:bg-primary/90" 
+          className="w-full"
           disabled={isPending}
         >
           {isPending ? <Loader2 className="animate-spin mr-2" /> : "Entrar agora"}

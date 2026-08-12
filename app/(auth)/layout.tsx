@@ -1,11 +1,11 @@
-import { ShoppingBag, ShieldCheck, Truck, CreditCard } from "lucide-react"
+import { ShoppingBag, ShieldCheck, Sparkles, HeartHandshake } from "lucide-react"
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[55%_45%]">
       {/* Lado Esquerdo: Branding e Diferenciais */}
       <div className="relative hidden flex-col items-center justify-center bg-primary p-12 text-white lg:flex">
-        {/* Grid decorativo de fundo inspirado no KYDORA */}
+        {/* Grid decorativo de fundo */}
         <div className="pointer-events-none absolute inset-0 opacity-5">
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -22,27 +22,27 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <div className="rounded-xl bg-white p-2.5 shadow-xl shadow-black/10">
               <ShoppingBag className="h-9 w-9 text-primary" />
             </div>
-            <h1 className="text-4xl font-extrabold tracking-tight">EcoStore</h1>
+            <h1 className="text-4xl font-extrabold tracking-tight">Mimos da Kah</h1>
           </div>
 
           <h2 className="mb-8 text-3xl font-semibold leading-tight">
-            Sua jornada para uma compra sustentável começa aqui.
+            Personalizando com amor cada momento especial da sua vida.
           </h2>
 
           <div className="space-y-6">
             <div className="flex gap-4 rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-md transition-all hover:bg-white/15">
-              <Truck className="h-10 w-10 shrink-0 text-primary-foreground/80" />
+              <Sparkles className="h-10 w-10 shrink-0 text-primary-foreground/80" />
               <div>
-                <h3 className="text-lg font-bold">Entrega Ágil</h3>
-                <p className="text-sm text-primary-foreground/70">Receba seus produtos com rapidez e rastreamento em tempo real.</p>
+                <h3 className="text-lg font-bold">Feito Sob Medida</h3>
+                <p className="text-sm text-primary-foreground/70">Lembrancinhas, bolos, camisetas estampadas e crachás únicos criados especialmente para você.</p>
               </div>
             </div>
 
             <div className="flex gap-4 rounded-2xl border border-white/20 bg-white/10 p-6 backdrop-blur-md transition-all hover:bg-white/15">
-              <ShieldCheck className="h-10 w-10 shrink-0 text-primary-foreground/80" />
+              <HeartHandshake className="h-10 w-10 shrink-0 text-primary-foreground/80" />
               <div>
-                <h3 className="text-lg font-bold">Compra Segura</h3>
-                <p className="text-sm text-primary-foreground/70">Dados protegidos por criptografia de ponta e camadas extras de segurança.</p>
+                <h3 className="text-lg font-bold">Atendimento Dedicado</h3>
+                <p className="text-sm text-primary-foreground/70">Cuidado em cada detalhe e carinho na entrega de todas as nossas variedades e mimos.</p>
               </div>
             </div>
           </div>
