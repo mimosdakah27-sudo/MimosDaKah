@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit, Public_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { CartDrawer } from "@/components/site/cart-drawer";
@@ -11,34 +11,35 @@ import QueryProvider from "@/providers/query-provider";
 import "./styles/globals.css";
 import { StoreProvider } from "@/providers/store-provider";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
+const publicSansHeading = Public_Sans({subsets:['latin'],variable:'--font-heading'});
+
+const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://eco-store-tan.vercel.app"),
+  metadataBase: new URL("https://mimosdakah.com.br"),
 
   title: {
-    default: "EcoStore — Moda Autêntica e Acessórios Premium",
-    template: "%s | EcoStore",
+    default: "Mimos da Kah — Lembrancinhas, Camisetas Personalizadas e Variedades",
+    template: "%s | Mimos da Kah",
   },
 
   description:
-    "Descubra roupas e acessórios de alta qualidade com design autêntico. Vista seu estilo com sofisticação, conforto e entrega rápida.",
+    "Encontre lembrancinhas exclusivas, bolos deliciosos, crachás personalizados, camisetas estampadas e mimos especiais para todas as ocasiões.",
 
   keywords: [
-    "moda autêntica",
-    "roupas premium",
-    "acessórios",
-    "EcoStore",
-    "moda sustentável",
-    "tendências de estilo",
+    "Mimos da Kah",
+    "lembrancinhas personalizadas",
+    "camisetas estampadas",
+    "crachás",
+    "bolos",
+    "presentes criativos",
+    "variedades",
+    "personalizados",
   ],
 
-  authors: [{ name: "EcoStore" }],
-  creator: "EcoStore",
-  publisher: "EcoStore",
+  authors: [{ name: "Mimos da Kah" }],
+  creator: "Mimos da Kah",
+  publisher: "Mimos da Kah",
 
   robots: {
     index: true,
@@ -55,30 +56,29 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://eco-store-tan.vercel.app",
-    siteName: "EcoStore",
-    title: "EcoStore — Moda Autêntica e Acessórios Premium",
+    url: "https://mimosdakah.com.br",
+    siteName: "Mimos da Kah",
+    title: "Mimos da Kah — Lembrancinhas, Camisetas Personalizadas e Variedades",
     description:
-      "Renove seu guarda-roupa com peças exclusivas, alta qualidade e estilo autêntico. Confira as novidades!",
+      "Transforme momentos em lembranças inesquecíveis! Confira nossas opções de lembrancinhas, bolos, camisetas com estampas exclusivas e muito mais.",
     images: [
       {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "EcoStore - Moda Autêntica e Acessórios",
+        alt: "Mimos da Kah - Presentes, Personalizados e Variedades",
       },
     ],
   },
 
   twitter: {
     card: "summary_large_image",
-    title: "EcoStore — Moda Autêntica",
+    title: "Mimos da Kah — Lembrancinhas e Personalizados",
     description:
-      "Roupas e acessórios premium para quem valoriza estilo e autenticidade.",
+      "Lembrancinhas, camisetas estampadas, crachás e mimos criativos para você ou para presentear.",
     images: ["/og-image.jpg"],
   },
 
-  // Ícones (Opcional, caso queira garantir favicon futuramente)
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
@@ -92,7 +92,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={cn("dark", inter.variable)}>
+    <html lang="pt-BR" className={cn("light", "scroll-smooth", "font-sans", outfit.variable, publicSansHeading.variable)}>
       <head>
         {/* Otimização de LCP: Conecta antecipadamente ao Supabase para carregar imagens e dados mais rápido */}
         <link rel="preconnect" href="https://trmbmnjpylozykcyxcuc.supabase.co" />
