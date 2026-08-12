@@ -62,13 +62,14 @@ export async function createCheckoutSession(payload: any) {
 
   console.log("Calculado total do checkout:", total, "Peso total:", calculatedWeight);
 
-  // 3. Formato enxuto dos itens incluindo o ID da variante e do tamanho
+  // 3. Formato enxuto dos itens incluindo o ID da variante
   const minimalItemsData = payload.items.map((i: any) => ({
     id: i.product.id,
     q: i.quantity,
     p: getEffectivePrice(i.product),
     v: i.product.variant_id || i.product.v || null,
-    sz: i.product.variant_size_id || i.product.sz || null,
+    name: i.product.name || null,
+    tamanho: i.product.tamanho || null,
   }));
 
   // Montando o metadata base

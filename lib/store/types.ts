@@ -6,9 +6,8 @@ export type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 export type CartProduct = ProductRow & {
   variant_id?: string;
   variant_size_id?: string;
-  cor?: string;
+  name?: string;      // Substituiu 'cor'
   tamanho?: string;
-  // Se a variante tiver uma imagem própria, podemos sobrescrever a principal aqui
   imagem_url: string; 
 };
 
