@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { revalidateProductById, revalidateProductFull, revalidateProductImages, revalidateProductsList, revalidateProductVariants } from "@/lib/actions/revalidate";
+import { revalidateProductById, revalidateProductImages, revalidateProductsList, revalidateProductVariants } from "@/lib/actions/revalidate";
 
 import type {
   FormDataState,
@@ -28,20 +28,13 @@ export function useAdminProduct(
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [sizeGuideState, setSizeGuideState] = useState<any>(null);
 
-  // Define o padrão inicial vazio para novos produtos
+  // Define o padrão inicial vazio para novos produtos usando 'name' em vez de 'cor'
   const defaultVariants = [
     {
-      cor: "",
-      padrao_tecido: "",
+      name: "",
+      material: "",
       is_principal: true,
       imagens: product?.imagem_url ? [product.imagem_url] : [],
-      sizes: [
-        {
-          tamanho: "",
-          estoque: product?.estoque ?? 0,
-          sku: `SKU-${Math.random().toString(36).substring(7).toUpperCase()}`,
-        },
-      ],
     },
   ];
 
@@ -61,17 +54,10 @@ export function useAdminProduct(
       if (dbRelations.variants && dbRelations.variants.length > 0) {
         const formattedVariants = dbRelations.variants.map((v: any) => ({
           id: v.id,
-          cor: v.cor,
-          padrao_tecido: v.padrao_tecido || "",
+          name: v.name,
+          material: v.material || "",
           is_principal: v.is_principal ?? false,
           imagens: Array.isArray(v.imagens) ? v.imagens : [],
-          sizes: v.variant_sizes?.map((s: any) => ({
-            id: s.id,
-            tamanho: s.tamanho,
-            estoque: s.estoque,
-            sku: s.sku,
-            codigo_universal: s.codigo_universal || "",
-          })) || [],
         }));
         setVariantsFormState(formattedVariants);
       }
@@ -84,10 +70,6 @@ export function useAdminProduct(
 
   const initialValues: FormDataState = {
     nome: product?.nome ?? "",
-    marca: product?.marca ?? "",
-    modelo: product?.modelo ?? "",
-    categoria: product?.categoria ?? "",
-    condicao: (product?.condicao as "novo" | "usado") ?? "novo",
     
     descricao: product?.descricao ?? "",
     preco: product?.preco ?? 0,
@@ -105,7 +87,6 @@ export function useAdminProduct(
     garantia_tipo: (product?.garantia_tipo as "vendedor" | "fabrica" | "nenhuma") ?? "vendedor",
     garantia_dias: product?.garantia_dias ?? 0,
 
-    // CORREÇÃO AQUI: Garante que o array de variantes reaja ao estado atualizado do banco
     variants: variantsFormState as any,
   };
 
@@ -123,7 +104,7 @@ export function useAdminProduct(
       await revalidateProductById(finalId);
       await revalidateProductImages(finalId);
       await revalidateProductVariants(finalId);
-      await revalidateProductsList()
+      await revalidateProductsList();
       toast.success(
         isEdit ? "Catálogo atualizado com sucesso." : "Novo item registrado com sucesso!"
       );

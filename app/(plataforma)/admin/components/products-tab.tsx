@@ -18,6 +18,7 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import { EmptyState } from "./EmptyState";
 import { revalidateProductFull, revalidateProductById, revalidateProductsList } from "@/lib/actions/revalidate";
 import { cn } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,10 +26,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProductRow } from "../types/admin-types";
 import { ProductForm } from "./product-form";
 
-type ProductWithAtivo = ProductRow & { ativo?: boolean };
-
 interface ProductsTabProps {
-  products: ProductWithAtivo[];
+  products: ProductRow[];
 }
 
 export function ProductsTab({ products }: ProductsTabProps) {
@@ -36,18 +35,18 @@ export function ProductsTab({ products }: ProductsTabProps) {
   const [editing, setEditing] = useState<ProductRow | null>(null);
   const [creating, setCreating] = useState(false);
   
-  const [productToDelete, setProductToDelete] = useState<ProductWithAtivo | null>(null);
+  const [productToDelete, setProductToDelete] = useState<ProductRow | null>(null);
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteProductService(id),
     onSuccess: async (_, id) => {
       await revalidateProductFull(id);
-      toast.success("Produto removido definitivamente do catálogo.");
+      toast.success("Mimo removido definitivamente do catálogo.");
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
       setProductToDelete(null);
     },
     onError: (err: any) => {
-      toast.error(err.message || "Erro ao excluir produto.");
+      toast.error(err.message || "Erro ao excluir mimo.");
     },
   });
 
@@ -66,8 +65,8 @@ export function ProductsTab({ products }: ProductsTabProps) {
       ]);
       toast.success(
         variables.currentStatus
-          ? "Produto desativado e ocultado da vitrine."
-          : "Produto reativado na vitrine!",
+          ? "Mimo ocultado da vitrine."
+          : "Mimo reativado na vitrine!",
       );
       queryClient.invalidateQueries({ queryKey: ["admin-data"] });
     },
@@ -76,7 +75,7 @@ export function ProductsTab({ products }: ProductsTabProps) {
 
   const handleOpenDeleteModal = (
     e: React.MouseEvent,
-    product: ProductWithAtivo,
+    product: ProductRow,
   ) => {
     e.stopPropagation();
     e.preventDefault();
@@ -85,7 +84,7 @@ export function ProductsTab({ products }: ProductsTabProps) {
 
   const handleToggleActiveClick = (
     e: React.MouseEvent,
-    product: ProductWithAtivo,
+    product: ProductRow,
   ) => {
     e.stopPropagation();
     e.preventDefault();
@@ -100,9 +99,9 @@ export function ProductsTab({ products }: ProductsTabProps) {
         {!creating && !editing && (
           <Button
             onClick={() => setCreating(true)}
-            className="bg-primary hover:bg-primary/90 text-white gap-2 rounded-xl font-bold shadow-sm h-11 px-5"
+            className="bg-primary hover:bg-primary/95 text-white gap-2 rounded-2xl font-bold shadow-sm h-11 px-5 transition-all"
           >
-            <Plus className="h-4 w-4" /> Novo produto
+            <Plus className="h-4 w-4" /> Novo mimo
           </Button>
         )}
 
@@ -121,80 +120,84 @@ export function ProductsTab({ products }: ProductsTabProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => {
-          const isAtivo = product.ativo !== false;
+      {products.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {products.map((product) => {
+            const isAtivo = product.ativo !== false;
 
-          return (
-            <div
-              key={product.id}
-              className={cn("relative", !isAtivo && "opacity-60")}
-            >
-              <ProductCard
-                product={product as any}
-                isAdmin={true}
-                actions={
-                  <div className="flex gap-1.5 w-full pt-1">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        setEditing(product);
-                      }}
-                      className="h-8 w-8 p-0 rounded-md bg-secondary/80 hover:bg-secondary transition-all"
-                      aria-label={`Editar ${product.nome}`}
-                      title="Editar"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+            return (
+              <div
+                key={product.id}
+                className={cn("relative transition-opacity", !isAtivo && "opacity-60")}
+              >
+                <ProductCard
+                  product={product as any}
+                  isAdmin={true}
+                  actions={
+                    <div className="flex gap-1.5 w-full pt-1">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setEditing(product);
+                        }}
+                        className="h-8 w-8 p-0 rounded-xl bg-secondary/80 hover:bg-secondary transition-all"
+                        aria-label={`Editar ${product.nome}`}
+                        title="Editar"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
 
-                    <Button
-                      size="sm"
-                      variant={isAtivo ? "outline" : "default"}
-                      onClick={(e) => handleToggleActiveClick(e, product)}
-                      disabled={toggleActiveMutation.isPending}
-                      className={`h-8 flex-1 rounded-md text-xs px-2 flex items-center justify-center gap-1.5 ${!isAtivo ? "text-white" : ""}`}
-                      aria-label={isAtivo ? `Ocultar ${product.nome}` : `Ativar ${product.nome}`}
-                      title={isAtivo ? "Ocultar" : "Ativar"}
-                    >
-                      {isAtivo ? (
-                        <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
-                      ) : (
-                        <Eye className="h-3.5 w-3.5" />
-                      )}
-                      <span className="hidden sm:inline">
+                      <Button
+                        size="sm"
+                        variant={isAtivo ? "outline" : "default"}
+                        onClick={(e) => handleToggleActiveClick(e, product)}
+                        disabled={toggleActiveMutation.isPending}
+                        className={`h-8 flex-1 rounded-xl text-xs px-2 flex items-center justify-center gap-1.5 ${!isAtivo ? "text-white" : ""}`}
+                        aria-label={isAtivo ? `Ocultar ${product.nome}` : `Ativar ${product.nome}`}
+                        title={isAtivo ? "Ocultar" : "Ativar"}
+                      >
+                        {isAtivo ? (
+                          <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden sm:inline">
                           {isAtivo ? "Ocultar" : "Ativar"}
-                      </span>
-                    </Button>
+                        </span>
+                      </Button>
 
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={(e) => handleOpenDeleteModal(e, product)}
-                      className="h-8 w-8 rounded-md p-0 flex items-center justify-center shadow-sm shrink-0 text-white"
-                      aria-label={`Excluir ${product.nome}`}
-                      title="Excluir"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                }
-              />
-            </div>
-          );
-        })}
-      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={(e) => handleOpenDeleteModal(e, product)}
+                        className="h-8 w-8 rounded-xl p-0 flex items-center justify-center shadow-sm shrink-0 text-white"
+                        aria-label={`Excluir ${product.nome}`}
+                        title="Excluir"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState title="Nenhum mimo encontrado no catálogo" iconType="product" />
+      )}
 
       <Dialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md rounded-3xl">
           <DialogHeader className="space-y-3">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
               <AlertTriangle className="h-6 w-6" />
             </div>
             <DialogTitle className="text-center text-xl font-bold">
-              Excluir produto definitivamente?
+              Excluir mimo definitivamente?
             </DialogTitle>
             <DialogDescription className="text-center text-sm text-muted-foreground space-y-2">
               <span>
@@ -207,16 +210,16 @@ export function ProductsTab({ products }: ProductsTabProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="bg-muted/50 rounded-xl p-3 text-xs text-muted-foreground space-y-1 my-2 border">
-            <p>• O produto será removido da vitrine e do painel.</p>
-            <p>• O histórico de pedidos antigos será preservado com segurança.</p>
+          <div className="bg-muted/50 rounded-2xl p-3 text-xs text-muted-foreground space-y-1 my-2 border">
+            <p>• O item será removido da vitrine e do painel administrativo.</p>
+            <p>• O histórico de pedidos antigos continuará preservado com segurança.</p>
           </div>
 
           <DialogFooter className="flex gap-2 sm:justify-center">
             <Button
               type="button"
               variant="outline"
-              className="flex-1 rounded-xl"
+              className="flex-1 rounded-2xl h-11"
               onClick={() => setProductToDelete(null)}
               disabled={deleteMutation.isPending}
             >
@@ -225,7 +228,7 @@ export function ProductsTab({ products }: ProductsTabProps) {
             <Button
               type="button"
               variant="destructive"
-              className="flex-1 rounded-xl font-semibold text-white"
+              className="flex-1 rounded-2xl h-11 font-semibold text-white"
               disabled={deleteMutation.isPending}
               onClick={() => {
                 if (productToDelete) {

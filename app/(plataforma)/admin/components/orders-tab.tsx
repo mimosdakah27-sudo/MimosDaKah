@@ -230,7 +230,7 @@ function OrderCard({
           </a>
         )}
 
-        {/* Modal de Produtos Detalhados com Margin/Espaçamento Lateral no Mobile */}
+        {/* Modal de Mimos/Produtos Detalhados */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger
             render={
@@ -240,7 +240,7 @@ function OrderCard({
                 className="w-full h-8 text-xs flex items-center justify-between gap-2"
               >
                 <span className="flex items-center gap-1.5 truncate">
-                  <Package size={14} /> Ver Produtos ({order.order_items.length}
+                  <Package size={14} /> Ver Mimos ({order.order_items.length}
                   )
                 </span>
                 <Eye size={12} className="text-muted-foreground shrink-0" />
@@ -248,7 +248,6 @@ function OrderCard({
             }
           ></DialogTrigger>
 
-          {/* w-[calc(100%-2rem)] garante 1rem de espaçamento nas bordas laterais do celular */}
           <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[85vh] rounded-xl sm:rounded-lg overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
               <DialogTitle className="text-sm font-bold flex items-center gap-2">
@@ -261,7 +260,7 @@ function OrderCard({
                   key={i.id}
                   className="flex items-center gap-2.5 p-2 rounded-lg border border-border/60 bg-muted/20"
                 >
-                  {/* Foto do produto */}
+                  {/* Foto do mimo */}
                   {i.product_image ? (
                     <img
                       src={i.product_image}
@@ -288,6 +287,11 @@ function OrderCard({
                       {i.tamanho && (
                         <Badge className="text-[8px] px-1 py-0">
                           Tam: {i.tamanho}
+                        </Badge>
+                      )}
+                      {i.variant_name && !i.cor && !i.tamanho && (
+                        <Badge className="text-[8px] px-1 py-0">
+                          Var: {i.variant_name}
                         </Badge>
                       )}
                     </div>

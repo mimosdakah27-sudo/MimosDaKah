@@ -19,17 +19,10 @@ export function StepVariants() {
   const handleAddVariant = () => {
     const isFirst = fields.length === 0;
     append({
-      cor: "",
-      padrao_tecido: "",
+      name: "",
+      material: "",
       is_principal: isFirst,
       imagens: [],
-      sizes: [
-        {
-          tamanho: "",
-          estoque: 0,
-          sku: `SKU-${Math.random().toString(36).substring(7).toUpperCase()}`,
-        },
-      ],
     });
   };
 
@@ -99,19 +92,19 @@ export function StepVariants() {
             <div className="flex items-start justify-between gap-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1">
                 <div className="space-y-1">
-                  <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">Cor</Label>
+                  <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">Nome da Variação</Label>
                   <Input
-                    placeholder="Ex: Azul"
-                    {...register(`variants.${index}.cor`)}
-                    className={cn("rounded-lg h-9 sm:h-10 text-xs px-2.5", variantError?.cor && "border-destructive")}
+                    placeholder="Ex: Azul ou Tamanho G"
+                    {...register(`variants.${index}.name`)}
+                    className={cn("rounded-lg h-9 sm:h-10 text-xs px-2.5", variantError?.name && "border-destructive")}
                   />
-                  {variantError?.cor && <span className="text-[10px] text-destructive block">{variantError.cor.message}</span>}
+                  {variantError?.name && <span className="text-[10px] text-destructive block">{variantError.name.message}</span>}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">Estampa / Padrão</Label>
+                  <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">Material (Opcional)</Label>
                   <Input
-                    placeholder="Ex: Xadrez ou Liso"
-                    {...register(`variants.${index}.padrao_tecido`)}
+                    placeholder="Ex: Cotton / Leather"
+                    {...register(`variants.${index}.material`)}
                     className="rounded-lg h-9 sm:h-10 text-xs px-2.5"
                   />
                 </div>
@@ -148,7 +141,7 @@ export function StepVariants() {
             {/* Upload e Galeria de Fotos Compacta */}
             <div className="space-y-1.5 pt-1.5 border-t border-border/40">
               <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold block">
-                Fotos desta cor
+                Fotos desta variação
               </Label>
               <div className="flex flex-wrap gap-2">
                 {variants[index]?.imagens?.map((imgItem: any, imgIdx: number) => {
@@ -190,7 +183,7 @@ export function StepVariants() {
         onClick={handleAddVariant}
         className="w-full h-9 sm:h-10 rounded-lg border-dashed border-border hover:border-primary text-xs font-semibold gap-1.5"
       >
-        <Plus className="h-3.5 w-3.5" /> Adicionar variação de cor
+        <Plus className="h-3.5 w-3.5" /> Adicionar nova variação
       </Button>
     </div>
   );

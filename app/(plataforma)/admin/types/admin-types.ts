@@ -1,9 +1,6 @@
-// types/admin-types.ts
 import * as yup from "yup";
-
 import type { Database } from "@/types/database";
 
-// Tipos base direto do Database do Supabase
 export type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 export type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
@@ -19,57 +16,36 @@ export interface LocalProductImage {
   isNewLocal?: boolean;
 }
 
-// Tipos de Estado Auxiliares para as Etapas (Variantes e Tamanhos)
 export interface VariantImageState {
-  url: string; // URL remota (se já salva) ou URL temporária (blob)
-  file?: File; // Arquivo cru caso o usuário tenha adicionado agora
-  isNew?: boolean; // Identifica se precisa de upload
+  url: string;
+  file?: File;
+  isNew?: boolean;
 }
 
-export interface VariantSizeState {
-  id?: string;
-  tamanho: string;
-  estoque: number;
-  sku: string;
-  codigo_universal?: string;
-  preco?: number;
-}
-
+// State ajustado para inglês (name)
 export interface ProductVariantState {
   id?: string;
-  cor: string;
-  padrao_tecido?: string;
+  name: string;
+  material?: string | null;
   is_principal: boolean;
   imagens: (string | VariantImageState)[];
-  sizes: VariantSizeState[];
 }
 
-// --- Schemas Separados por Etapa ---
-
-// Etapa 1: Informações Básicas
 export const step1Schema = yup.object({
   nome: yup
     .string()
     .required("O nome é obrigatório")
-    .max(60, "Máximo de 60 caracteres"),
-  marca: yup.string().required("A marca é obrigatória"),
-  modelo: yup.string().required("O modelo é obrigatório"),
-  categoria: yup.string().required("A categoria é obrigatória"),
-  condicao: yup
-    .string()
-    .oneOf(["novo", "usado"])
-    .required("A condição é obrigatória"),
+    .max(65, "Máximo de 65 caracteres"),
 });
 
-// Etapa 2: Cores e Fotos (Variantes sem exigir tamanhos aqui)
 export const step2Schema = yup.object({
   variants: yup
     .array()
     .of(
       yup.object({
         id: yup.string().optional(),
-        cor: yup.string().required("Cor obrigatória"),
-        padrao_tecido: yup.string().nullable().optional(),
+        name: yup.string().required("Nome da variação é obrigatório"),
+        material: yup.string().nullable().optional(),
         is_principal: yup.boolean().required(),
         imagens: yup
           .array()
@@ -80,43 +56,14 @@ export const step2Schema = yup.object({
               (value) => typeof value === "string" || (typeof value === "object" && value !== null)
             )
           )
-          .min(1, "Adicione ao menos 1 foto para esta cor")
+          .min(1, "Adicione ao menos 1 foto para esta variação")
           .required("Imagens obrigatórias"),
       })
     )
-    .min(1, "Adicione ao menos 1 variação de cor")
+    .min(1, "Adicione ao menos 1 variação")
     .required("Variantes obrigatórias"),
 });
 
-// Etapa 3: Tamanhos e SKUs
-export const step3Schema = yup.object({
-  variants: yup
-    .array()
-    .of(
-      yup.object({
-        sizes: yup
-          .array()
-          .of(
-            yup.object({
-              id: yup.string().optional(),
-              tamanho: yup.string().required("Tamanho obrigatório"),
-              estoque: yup
-                .number()
-                .transform((value, originalValue) => (originalValue === "" ? 0 : value))
-                .typeError("Deve ser número")
-                .required("Estoque obrigatório"),
-              sku: yup.string().required("SKU obrigatório"),
-              codigo_universal: yup.string().nullable().optional(),
-            })
-          )
-          .min(1, "Adicione ao menos 1 tamanho")
-          .required("Tamanhos obrigatórios"),
-      })
-    )
-    .required(),
-});
-
-// Etapa 4: Descrição e Logística
 export const step4Schema = yup.object({
   descricao: yup
     .string()
@@ -125,7 +72,7 @@ export const step4Schema = yup.object({
 
   weight: yup
     .mixed()
-    .transform((value, originalValue) => {
+    .transform((_, originalValue) => {
       if (originalValue === "" || originalValue == null) return 0;
       const stringVal = String(originalValue).replace(",", ".");
       const num = Number(stringVal);
@@ -140,7 +87,7 @@ export const step4Schema = yup.object({
     
   width: yup
     .number()
-    .transform((value: any, originalValue: any) => {
+    .transform((_, originalValue) => {
       if (originalValue === "" || originalValue == null) return 0;
       return Number(String(originalValue).replace(",", ".")) || 0;
     })
@@ -150,7 +97,7 @@ export const step4Schema = yup.object({
     
   height: yup
     .number()
-    .transform((value: any, originalValue: any) => {
+    .transform((_, originalValue) => {
       if (originalValue === "" || originalValue == null) return 0;
       return Number(String(originalValue).replace(",", ".")) || 0;
     })
@@ -160,16 +107,15 @@ export const step4Schema = yup.object({
     
   length: yup
     .number()
-    .transform((value: any, originalValue: any) => {
+    .transform((_, originalValue) => {
       if (originalValue === "" || originalValue == null) return 0;
       return Number(String(originalValue).replace(",", ".")) || 0;
     })
     .typeError("Comprimento inválido")
     .min(1, "Mínimo 1cm")
-    .required("Comprimento é obrigatória"),
+    .required("Comprimento é obrigatório"),
 });
 
-// Etapa 5: Preço, Preço Promocional e Garantia
 export const step5Schema = yup.object({
   preco: yup
     .number()
@@ -180,8 +126,8 @@ export const step5Schema = yup.object({
 
   preco_promocional: yup
     .number()
-    .transform((value, originalValue) =>
-      originalValue === "" || originalValue == null ? null : value,
+    .transform((_, originalValue) =>
+      originalValue === "" || originalValue == null ? null : Number(originalValue),
     )
     .typeError("Preço promocional inválido")
     .min(0, "O preço promocional deve ser maior ou igual a 0")
@@ -189,26 +135,27 @@ export const step5Schema = yup.object({
     .optional(),
 
   permite_retirada: yup.boolean().default(false),
-  destaque: yup.boolean().default(false), // <-- Adicionado aqui
-  ativo: yup.boolean().default(true),      // <-- Adicionado aqui
+  destaque: yup.boolean().default(false),
+  ativo: yup.boolean().default(true),
+  
   garantia_tipo: yup
     .string()
     .oneOf(["vendedor", "fabrica", "nenhuma"])
+    .default("vendedor")
     .required("Tipo de garantia obrigatório"),
+    
   garantia_dias: yup
     .number()
-    .transform((value, originalValue) =>
-      originalValue === "" || originalValue == null ? 0 : value,
+    .transform((_, originalValue) =>
+      originalValue === "" || originalValue == null ? 0 : Number(originalValue),
     )
     .nullable()
-    .required("Dias de garantia obrigatórios"),
+    .default(0),
 });
 
-// Schema completo unificado combinando todos os campos
 export const productFormSchema = yup.object({
   ...step1Schema.fields,
   ...step2Schema.fields,
-  ...step3Schema.fields,
   ...step4Schema.fields,
   ...step5Schema.fields,
   imagem_url: yup.string().optional().default(""),

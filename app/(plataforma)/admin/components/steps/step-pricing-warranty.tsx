@@ -77,7 +77,7 @@ export function StepPricingWarranty() {
             className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
           />
           <Label htmlFor="permite_retirada" className="text-xs font-medium text-foreground cursor-pointer select-none">
-            Permite retirada pessoalmente
+            Permite retirada pessoalmente (ótimo para mimos locais)
           </Label>
         </div>
 
@@ -90,7 +90,7 @@ export function StepPricingWarranty() {
             className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary cursor-pointer"
           />
           <Label htmlFor="destaque" className="text-xs font-medium text-foreground cursor-pointer select-none">
-            Marcar como destaque na home
+            Marcar como destaque na página inicial
           </Label>
         </div>
       </div>
@@ -133,7 +133,7 @@ export function StepPricingWarranty() {
               const numeric = maskOnlyNumbers(e.target.value);
               setValue("garantia_dias", numeric === "" ? 0 : Number(numeric), { shouldValidate: true });
             }}
-            placeholder="Ex: 90" 
+            placeholder="Ex: 30" 
             className={cn("rounded-lg h-9 sm:h-10 text-xs", errors.garantia_dias && "border-destructive")} 
           />
           {errors.garantia_dias && <span className="text-[10px] text-destructive block">{String(errors.garantia_dias.message)}</span>}

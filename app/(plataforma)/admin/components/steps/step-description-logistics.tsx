@@ -32,10 +32,10 @@ export function StepDescriptionLogistics() {
     <div className="space-y-3 sm:space-y-4 animate-fade-in">
       <div className="space-y-1">
         <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
-          Descrição detalhada
+          Descrição detalhada e orientações de personalização
         </Label>
         <Textarea
-          placeholder="Descreva materiais, caimento, cuidados..."
+          placeholder="Descreva os materiais, dimensões da área de estampa, cuidados com o mimo, prazos ou como o cliente deve enviar a arte/foto..."
           {...register("descricao")}
           className={cn("rounded-lg min-h-[100px] sm:min-h-[120px] text-xs p-2.5", errors.descricao && "border-destructive")}
         />
@@ -44,7 +44,7 @@ export function StepDescriptionLogistics() {
 
       <div className="space-y-2 pt-1">
         <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold block">
-          Peso e dimensões (Cálculo de frete)
+          Peso e dimensões da embalagem (Cálculo de frete / Melhor Envio)
         </Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {logisticsFields.map((field) => {
@@ -66,7 +66,7 @@ export function StepDescriptionLogistics() {
                 </div>
                 <Input
                   type="text"
-                  placeholder={isWeight ? "Ex: 0.5" : "0"}
+                  placeholder={isWeight ? "Ex: 0.3" : "0"}
                   value={fieldValue ?? ""}
                   onChange={(e) => {
                     const masked = maskDecimal(e.target.value);

@@ -27,23 +27,18 @@ export async function fetchExtraImages(productId: string) {
 }
 
 export async function fetchProductVariantsAndGuides(productId: string) {
-  const [variantsRes, guidesRes] = await Promise.all([
+  const [variantsRes] = await Promise.all([
     supabase
       .from("product_variants")
-      .select(`*, variant_sizes (*)`)
+      .select(`*`)
       .eq("product_id", productId),
-    supabase
-      .from("product_size_guides")
-      .select("*")
-      .eq("product_id", productId)
-      .maybeSingle(),
   ]);
 
   if (variantsRes.error) throw variantsRes.error;
 
   return {
     variants: variantsRes.data ?? [],
-    sizeGuide: guidesRes.data ?? null,
+    sizeGuide: null,
   };
 }
 
@@ -69,17 +64,13 @@ export async function deleteExtraImage(id: string) {
 }
 
 /**
- * Função unificada de persistência de produto, imagens, variantes, tamanhos e guia de tamanhos.
- */
-/**
- * Função unificada de persistência de produto, imagens, variantes, tamanhos e guia de tamanhos.
+ * Função unificada de persistência de produto, imagens e variantes.
  */
 export async function saveProductWithGallery({
   form,
   productId,
   localExtraImages,
   imagesToDelete = [],
-  sizeGuideData, 
 }: {
   form: FormDataState;
   productId?: string;
@@ -123,20 +114,8 @@ export async function saveProductWithGallery({
       ? principalVariant.imagens[0] 
       : form.imagem_url || "";
 
-  // 3. SOMA AUTOMÁTICA DO ESTOQUE
-  const totalCalculatedStock = processedVariants.reduce((total: number, variant: any) => {
-    const variantSizesStock = (variant.sizes || []).reduce((acc: number, size: any) => {
-      return acc + (Number(size.estoque) || 0);
-    }, 0);
-    return total + variantSizesStock;
-  }, 0);
-
   const productPayload = {
     nome: form.nome,
-    marca: form.marca,
-    modelo: form.modelo,
-    categoria: form.categoria,
-    condicao: form.condicao,
     descricao: form.descricao,
     preco: typeof form.preco === "number" ? form.preco : parseDigitsToFloat(form.preco as any),
     preco_promocional: form.preco_promocional !== null && form.preco_promocional !== undefined
@@ -144,7 +123,6 @@ export async function saveProductWithGallery({
         ? form.preco_promocional
         : parseDigitsToFloat(String(form.preco_promocional))
       : null,
-    estoque: totalCalculatedStock,
     destaque: form.destaque ?? false,
     ativo: form.ativo ?? true,
     imagem_url: finalCapaUrl,
@@ -199,8 +177,7 @@ export async function saveProductWithGallery({
     );
   }
 
-  // 5. LIMPEZA TOTAL E SEGURA DAS VARIANTES ANTIGAS ANTES DE INSERIR AS NOVAS
-  // Isso impede totalmente o acúmulo de tamanhos fantasmas duplicados ao editar!
+  // 5. LIMPEZA TOTAL E SEGURA DAS VARIANTES ANTIGAS
   const { data: oldVariants } = await supabase
     .from("product_variants")
     .select("id")
@@ -208,58 +185,24 @@ export async function saveProductWithGallery({
 
   if (oldVariants && oldVariants.length > 0) {
     const oldVariantIds = oldVariants.map((v: any) => v.id);
-    // Deleta primeiro os tamanhos vinculados
-    await supabase.from("variant_sizes").delete().in("variant_id", oldVariantIds);
-    // Depois deleta as variantes antigas
-    await supabase.from("product_variants").delete().eq("product_id", savedProductId);
+    await supabase.from("product_variants").delete().in("id", oldVariantIds);
   }
 
-  // 6. Insere as novas variantes e seus tamanhos com SKUs garantidos e únicos
+  // 6. Insere as novas variantes compatíveis com a tabela `product_variants`
   if (processedVariants.length > 0) {
     for (const variant of processedVariants) {
-      const { data: insertedVariant, error: varErr } = await supabase
+      const { error: varErr } = await supabase
         .from("product_variants")
         .insert({
           product_id: savedProductId,
-          cor: variant.cor,
-          padrao_tecido: variant.padrao_tecido || null,
+          nome: variant.nome,
+          material: variant.material || null,
           is_principal: variant.is_principal,
           imagens: variant.imagens,
-        })
-        .select()
-        .single();
-
-      if (varErr) throw varErr;
-
-      if (insertedVariant && variant.sizes && variant.sizes.length > 0) {
-        const sizePayloads = variant.sizes.map((s: any, idx: number) => {
-          // Garante um SKU único infalível combinando o índice, timestamp curto e aleatório
-          const uniqueSkuSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-          const fallbackSku = `SKU-${s.tamanho || 'U'}-${idx}-${Date.now().toString().slice(-4)}-${uniqueSkuSuffix}`;
-
-          return {
-            variant_id: insertedVariant.id,
-            tamanho: s.tamanho,
-            estoque: Number(s.estoque),
-            sku: s.sku && s.sku.trim() !== "" ? s.sku : fallbackSku,
-            codigo_universal: s.codigo_universal || null,
-          };
         });
 
-        const { error: sizeErr } = await supabase.from("variant_sizes").insert(sizePayloads);
-        if (sizeErr) throw sizeErr;
-      }
+      if (varErr) throw varErr;
     }
-  }
-
-  // 7. Guia de Tamanhos
-  if (sizeGuideData) {
-    await supabase.from("product_size_guides").delete().eq("product_id", savedProductId);
-    const { error: guideErr } = await supabase.from("product_size_guides").insert({
-      product_id: savedProductId,
-      ...sizeGuideData,
-    });
-    if (guideErr) throw guideErr;
   }
 
   return savedProductId;

@@ -115,11 +115,7 @@ export default function AdminPage() {
 
       {/* Renderização */}
       {tab === "produtos" ? (
-        products.length > 0 ? (
-          <ProductsTab products={products} />
-        ) : (
-          <EmptyState title="Nenhum produto encontrado" iconType="product" />
-        )
+        <ProductsTab products={products} />
       ) : (
         orders.length > 0 ? (
           <OrdersTab orders={orders} />

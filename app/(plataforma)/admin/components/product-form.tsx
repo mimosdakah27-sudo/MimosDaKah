@@ -13,7 +13,6 @@ import {
   productFormSchema, 
   step1Schema, 
   step2Schema, 
-  step3Schema, 
   step4Schema, 
   step5Schema, 
   type FormDataState, 
@@ -24,7 +23,6 @@ import { useAdminProduct } from "../hooks/use-admin-product";
 // Sub-etapas
 import { StepBasicInfo } from "./steps/step-basic-info";
 import { StepVariants } from "./steps/step-variants";
-import { StepSizesSku } from "./steps/step-sizes-sku";
 import { StepDescriptionLogistics } from "./steps/step-description-logistics";
 import { StepPricingWarranty } from "./steps/step-pricing-warranty";
 
@@ -36,8 +34,7 @@ interface ProductFormProps {
 
 const STEPS = [
   { id: 1, label: "Informações básicas" },
-  { id: 2, label: "Cores e fotos" },
-  { id: 3, label: "Tamanhos e SKU" },
+  { id: 2, label: "Variações e fotos" },
   { id: 4, label: "Descrição e logística" },
   { id: 5, label: "Preço e garantia" },
 ];
@@ -64,7 +61,6 @@ export function ProductForm(props: ProductFormProps) {
 
     if (currentStep === 1) currentSchema = step1Schema;
     else if (currentStep === 2) currentSchema = step2Schema;
-    else if (currentStep === 3) currentSchema = step3Schema;
     else if (currentStep === 4) currentSchema = step4Schema;
     else if (currentStep === 5) currentSchema = step5Schema;
 
@@ -97,12 +93,21 @@ export function ProductForm(props: ProductFormProps) {
     // ---------------------------
 
     if (isValid && currentStep < 5) {
-      setCurrentStep((prev) => prev + 1);
+      // Pula direto da etapa 2 para a 4, já que a etapa 3 antiga foi removida
+      if (currentStep === 2) {
+        setCurrentStep(4);
+      } else {
+        setCurrentStep((prev) => prev + 1);
+      }
     }
   };
 
   const handlePrev = () => {
-    if (currentStep > 1) setCurrentStep((prev) => prev - 1);
+    if (currentStep === 4) {
+      setCurrentStep(2);
+    } else if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+    }
   };
 
   const onSubmit = (data: FormDataState) => {
@@ -111,11 +116,10 @@ export function ProductForm(props: ProductFormProps) {
 
   return (
     <Card className="rounded-xl sm:rounded-2xl border border-border bg-card shadow-lg animate-fade-in w-full mx-auto">
-      {/* Reduzido o padding do topo do CardHeader */}
       <CardHeader className="border-b border-border/50 p-3 sm:p-5 pb-3">
         <div className="flex items-center justify-between mb-2 sm:mb-3">
           <CardTitle className="text-base sm:text-lg font-bold text-foreground">
-            {isEdit ? "Editar produto" : "Novo produto"}
+            {isEdit ? "Editar mimo" : "Novo mimo"}
           </CardTitle>
           <button
             type="button"
@@ -127,7 +131,7 @@ export function ProductForm(props: ProductFormProps) {
           </button>
         </div>
 
-        {/* Stepper Header Tabs - Compactado com whitespace-nowrap */}
+        {/* Stepper Header Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
@@ -152,7 +156,7 @@ export function ProductForm(props: ProductFormProps) {
                   !isActive && !isPassed && "bg-muted/40 text-muted-foreground border-border/40 hover:bg-muted"
                 )}
               >
-                {isPassed ? <Check className="h-3 w-3 text-primary shrink-0" /> : <span>{step.id}.</span>}
+                {isPassed ? <Check className="h-3 w-3 text-primary shrink-0" /> : <span>{step.id === 4 ? "3" : step.id === 5 ? "4" : step.id}.</span>}
                 {step.label}
               </button>
             );
@@ -160,17 +164,15 @@ export function ProductForm(props: ProductFormProps) {
         </div>
       </CardHeader>
 
-      {/* Reduzido o padding das laterais e do topo no CardContent para os inputs */}
       <CardContent className="p-3 sm:p-5 pt-3 sm:pt-4">
         <FormProvider {...methods}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
             {currentStep === 1 && <StepBasicInfo />}
             {currentStep === 2 && <StepVariants />}
-            {currentStep === 3 && <StepSizesSku />}
             {currentStep === 4 && <StepDescriptionLogistics />}
             {currentStep === 5 && <StepPricingWarranty />}
 
-            {/* Rodapé Otimizado e sem a palavra "Etapa" para evitar quebras */}
+            {/* Rodapé Otimizado */}
             <div className="flex items-center justify-between pt-4 border-t border-border/50 gap-2">
               {currentStep > 1 ? (
                 <Button
@@ -186,9 +188,8 @@ export function ProductForm(props: ProductFormProps) {
               )}
 
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                {/* Indicação numérica limpa e protegida contra quebra */}
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-                  {currentStep} / 5
+                  {currentStep === 1 ? "1 / 4" : currentStep === 2 ? "2 / 4" : currentStep === 4 ? "3 / 4" : "4 / 4"}
                 </span>
 
                 {currentStep < 5 ? (
