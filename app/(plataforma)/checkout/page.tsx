@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, Lock, MapPin, Plus, ShieldCheck, Truck, User } from "lucide-react";
+import {
+  AlertCircle,
+  Lock,
+  MapPin,
+  Plus,
+  ShieldCheck,
+  Truck,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -28,8 +36,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<"shipping" | "review">("shipping");
   const [selectedRate, setSelectedRate] = useState<any>(null);
   const [isStripeLoading, setIsStripeLoading] = useState(false);
-  
-  // Controla se o usuário já chegou a destravar a revisão pelo menos uma vez
+
   const [hasCompletedShipping, setHasCompletedShipping] = useState(false);
 
   const { user } = useAuth();
@@ -37,7 +44,6 @@ export default function CheckoutPage() {
   const { items, subtotal, form } = useCheckout();
   const { config } = useStore();
 
-  // Se o carrinho estiver vazio, redireciona/volta para a rota anterior
   useEffect(() => {
     if (items && items.length === 0) {
       router.back();
@@ -102,23 +108,19 @@ export default function CheckoutPage() {
     [subtotal, selectedRate],
   );
 
-  // Validação se a etapa 1 está completa
   const isShippingComplete =
     !hasNoAddress && Boolean(selectedRate) && form.formState.isValid;
 
-  // Atualiza o estado global de conclusão caso os dados já estejam válidos
   useEffect(() => {
     if (isShippingComplete) {
       setHasCompletedShipping(true);
     }
   }, [isShippingComplete]);
 
-  // Função para lidar com o clique nas abas do topo com segurança
   const handleTabClick = (targetStep: "shipping" | "review") => {
     if (targetStep === "shipping") {
-      setStep("shipping"); // Sempre pode voltar pra entrega
+      setStep("shipping");
     } else if (targetStep === "review") {
-      // Só deixa ir para revisão se os dados da entrega estiverem completos
       if (isShippingComplete || hasCompletedShipping) {
         setHasCompletedShipping(true);
         setStep("review");
@@ -129,92 +131,90 @@ export default function CheckoutPage() {
   return (
     <div className="max-w-7xl mx-auto w-full">
       <BackButton />
-      
-      {/* Header com Stepper Visual Moderno e Clicável */}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {step === "shipping" ? "Checkout Seguro" : "Revisão e Pagamento"}
           </h1>
-          <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
-            {step === "shipping" ? "Confirme seu endereço e escolha a forma de envio" : "Confira os dados antes de finalizar seu pedido"}
+          <p className="text-sm text-muted-foreground mt-1">
+            {step === "shipping"
+              ? "Confirme seu endereço e escolha a forma de envio"
+              : "Confira os dados antes de finalizar seu pedido"}
           </p>
         </div>
 
-        {/* Stepper indicator interativo */}
-        <div className="flex items-center gap-2 bg-secondary/60 p-1.5 rounded-2xl border border-border/60 self-start md:self-auto">
-          {/* Aba 1: Entrega */}
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border self-start md:self-auto">
           <button
             type="button"
             onClick={() => handleTabClick("shipping")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               step === "shipping"
-                ? "bg-primary text-primary-foreground shadow-xs"
+                ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span className="w-4 h-4 rounded-full bg-background/20 flex items-center justify-center text-[10px]">1</span>
+            <span className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px]">
+              1
+            </span>
             <span>Entrega</span>
           </button>
 
-          {/* Aba 2: Revisão */}
           <button
             type="button"
             onClick={() => handleTabClick("review")}
             disabled={!isShippingComplete && !hasCompletedShipping}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               step === "review"
-                ? "bg-primary text-primary-foreground shadow-xs"
+                ? "bg-background text-foreground shadow-sm"
                 : isShippingComplete || hasCompletedShipping
-                ? "text-muted-foreground hover:text-foreground cursor-pointer"
-                : "text-muted-foreground/40 cursor-not-allowed opacity-60"
+                  ? "text-muted-foreground hover:text-foreground cursor-pointer"
+                  : "text-muted-foreground/40 cursor-not-allowed"
             }`}
-            title={
-              !isShippingComplete && !hasCompletedShipping
-                ? "Preencha o CPF e selecione o frete para liberar"
-                : "Ir para revisão"
-            }
           >
-            <span className="w-4 h-4 rounded-full bg-background/20 flex items-center justify-center text-[10px]">2</span>
+            <span className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px]">
+              2
+            </span>
             <span>Revisão</span>
           </button>
         </div>
       </div>
 
-      {/* Grid Principal */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* COLUNA ESQUERDA (70% no desktop) */}
         <div className="lg:col-span-7 space-y-6 order-2 lg:order-1">
           {step === "shipping" ? (
-            <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="space-y-6">
               {hasNoAddress ? (
-                <Card className="border-dashed border-2 border-primary/30 bg-primary/5 rounded-2xl shadow-none">
+                <Card className="border-dashed border-2">
                   <CardContent className="p-8 text-center flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                       <AlertCircle className="w-6 h-6" />
                     </div>
                     <div className="space-y-1">
-                      <h3 className="font-bold text-base text-foreground">Nenhum endereço cadastrado</h3>
-                      <p className="text-xs text-muted-foreground">Você precisa cadastrar um endereço de entrega para prosseguir.</p>
+                      <h3 className="font-semibold text-base">
+                        Nenhum endereço cadastrado
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Você precisa cadastrar um endereço de entrega para
+                        prosseguir.
+                      </p>
                     </div>
                     <Button
-                      nativeButton={false}
-                      className="rounded-xl px-6 font-bold"
                       render={
                         <Link href="/endereco">
                           <Plus className="mr-2 w-4 h-4" /> Cadastrar Endereço
                         </Link>
                       }
-                    />
+                      className="rounded-md px-6"
+                    ></Button>
                   </CardContent>
                 </Card>
               ) : (
                 <>
-                  {/* Seção Endereço */}
                   <div className="space-y-3">
-                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" /> Endereço de Destino
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" /> Endereço de
+                      Destino
                     </h3>
                     <AddressCard
                       address={activeAddress}
@@ -225,20 +225,23 @@ export default function CheckoutPage() {
                     />
                   </div>
 
-                  {/* Seção Dados NF (CPF) */}
-                  <Card className="rounded-2xl border-border/60 shadow-sm bg-card">
-                    <CardContent className="p-5 md:p-6 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                           <User className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-sm text-foreground">Dados para Nota Fiscal</h3>
-                          <p className="text-xs text-muted-foreground">Obrigatório para emissão da NF-e</p>
+                          <h3 className="font-semibold text-sm">
+                            Dados para Nota Fiscal
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            Obrigatório para emissão da NF-e
+                          </p>
                         </div>
                       </div>
-                      <div className="space-y-1.5 pt-2">
-                        <label className="text-xs font-semibold text-muted-foreground">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground">
                           CPF do Destinatário
                         </label>
                         <Input
@@ -251,9 +254,11 @@ export default function CheckoutPage() {
                             },
                           })}
                           placeholder="000.000.000-00"
-                          className={`h-11 rounded-xl bg-secondary/40 border-border/60 ${
-                            form.formState.errors.document ? "border-destructive" : ""
-                          }`}
+                          className={
+                            form.formState.errors.document
+                              ? "border-destructive"
+                              : ""
+                          }
                         />
                         {form.formState.errors.document && (
                           <p className="text-xs text-destructive font-medium">
@@ -264,9 +269,8 @@ export default function CheckoutPage() {
                     </CardContent>
                   </Card>
 
-                  {/* Seção Opções de Envio */}
-                  <div className="space-y-3 pt-2">
-                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <Truck className="w-4 h-4 text-primary" /> Opções de Envio
                     </h3>
                     {isLocal ? (
@@ -274,7 +278,9 @@ export default function CheckoutPage() {
                         <RadioGroup
                           value={selectedRate?.id ?? ""}
                           onValueChange={(id) =>
-                            setSelectedRate(localOptions.find((o) => o.id === id))
+                            setSelectedRate(
+                              localOptions.find((o) => o.id === id),
+                            )
                           }
                           className="space-y-3"
                         >
@@ -283,26 +289,27 @@ export default function CheckoutPage() {
                           ))}
                         </RadioGroup>
                       ) : (
-                        <Card className="border border-border/60 rounded-2xl bg-card shadow-sm">
+                        <Card>
                           <CardContent className="p-6 text-center space-y-4">
-                            <div className="mx-auto w-12 h-12 bg-secondary rounded-full flex items-center justify-center">
+                            <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                               <AlertCircle className="w-6 h-6 text-muted-foreground" />
                             </div>
                             <div>
-                              <h3 className="font-bold text-foreground">Frete não disponível</h3>
+                              <h3 className="font-semibold">
+                                Frete não disponível
+                              </h3>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Estamos na mesma região, mas não encontramos opções de entrega configuradas.
+                                Estamos na mesma região, mas não encontramos
+                                opções de entrega configuradas.
                               </p>
                             </div>
-                            <div className="flex flex-col gap-2.5 pt-2">
-                              <Button
-                                variant="outline"
-                                className="w-full rounded-xl h-11"
-                                render={
-                                  <Link href="/endereco">Revisar endereço</Link>
-                                }
-                              />
-                            </div>
+                            <Button
+                              variant="outline"
+                              render={() => (
+                                <Link href="/endereco">Revisar endereço</Link>
+                              )}
+                              className="w-full"
+                            ></Button>
                           </CardContent>
                         </Card>
                       )
@@ -318,70 +325,88 @@ export default function CheckoutPage() {
                 </>
               )}
 
-              {/* Botão Avançar Etapa */}
-              <div className="pt-4">
+              <div className="pt-2">
                 <Button
                   disabled={!isShippingComplete || isPending}
                   onClick={() => {
                     setHasCompletedShipping(true);
                     setStep("review");
                   }}
-                  className="w-full h-13 rounded-2xl font-bold text-base shadow-lg transition-all"
+                  className="w-full h-11 font-semibold"
                 >
                   Continuar para Revisão
                 </Button>
               </div>
             </div>
           ) : (
-            <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="rounded-2xl border-border/60 shadow-sm bg-card">
+                <Card>
                   <CardContent className="p-5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm flex items-center gap-2 text-foreground">
-                        <MapPin size={16} className="text-primary" /> Endereço de Entrega
+                      <h3 className="font-semibold text-sm flex items-center gap-2">
+                        <MapPin size={16} className="text-primary" /> Endereço
+                        de Entrega
                       </h3>
-                      <button onClick={() => setStep("shipping")} className="text-xs font-semibold text-primary hover:underline cursor-pointer">
+                      <button
+                        onClick={() => setStep("shipping")}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
                         Alterar
                       </button>
                     </div>
-                    <div className="text-xs text-muted-foreground space-y-0.5 pt-1">
-                      <p className="font-medium text-foreground">{activeAddress?.street}</p>
-                      <p>{activeAddress?.city} - CEP: {activeAddress?.zip_code}</p>
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p className="font-medium text-foreground">
+                        {activeAddress?.street}
+                      </p>
+                      <p>
+                        {activeAddress?.city} - CEP: {activeAddress?.zip_code}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-2xl border-border/60 shadow-sm bg-card">
+                <Card>
                   <CardContent className="p-5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-sm flex items-center gap-2 text-foreground">
+                      <h3 className="font-semibold text-sm flex items-center gap-2">
                         <Truck size={16} className="text-primary" /> Envio e NF
                       </h3>
-                      <button onClick={() => setStep("shipping")} className="text-xs font-semibold text-primary hover:underline cursor-pointer">
+                      <button
+                        onClick={() => setStep("shipping")}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
                         Alterar
                       </button>
                     </div>
-                    <div className="text-xs text-muted-foreground space-y-1 pt-1">
-                      <p className="font-semibold text-foreground">
-                        {selectedRate?.type === "pickup" || selectedRate?.type === "local_delivery"
+                    <div className="text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium text-foreground">
+                        {selectedRate?.type === "pickup" ||
+                        selectedRate?.type === "local_delivery"
                           ? "Entrega Local"
-                          : `${selectedRate?.company?.name} - ${selectedRate?.name}`} ({selectedRate?.delivery_time})
+                          : `${selectedRate?.company?.name} - ${selectedRate?.name}`}{" "}
+                        ({selectedRate?.delivery_time})
                       </p>
-                      <p>CPF NF: <span className="font-mono text-foreground">{form.getValues("document")}</span></p>
+                      <p>
+                        CPF NF:{" "}
+                        <span className="font-mono text-foreground">
+                          {form.getValues("document")}
+                        </span>
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Selo de Segurança */}
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-1">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                <span>Ambiente 100% seguro com criptografia de ponta a ponta</span>
+                <span>
+                  Ambiente 100% seguro com criptografia de ponta a ponta
+                </span>
               </div>
 
               <Button
-                className="w-full h-14 rounded-2xl font-black text-base shadow-xl transition-all gap-2"
+                className="w-full"
                 disabled={isStripeLoading}
                 onClick={async () => {
                   setIsStripeLoading(true);
@@ -390,10 +415,15 @@ export default function CheckoutPage() {
                       ...item,
                       product: {
                         ...item.product,
-                        weight: item.product.weight || 0.3,
-                        width: item.product.width || 10,
-                        height: item.product.height || 10,
-                        length: item.product.length || 10,
+                        // Mapeia variant_id, name e tamanho de acordo com o DB e Server Action atualizados
+                        variant_id:
+                          item.product.variant_id || item.product.v || null,
+                        name: item.product.name || null,
+                        tamanho: item.product.tamanho || null,
+                        weight: Number(item.product.weight) || 0.3,
+                        width: Number(item.product.width) || 10,
+                        height: Number(item.product.height) || 10,
+                        length: Number(item.product.length) || 10,
                       },
                     })),
                     shipping: selectedRate,
@@ -410,7 +440,8 @@ export default function CheckoutPage() {
                     },
                   };
                   try {
-                    const { url } = await createCheckoutSession(checkoutPayload);
+                    const { url } =
+                      await createCheckoutSession(checkoutPayload);
                     if (url) window.location.href = url;
                   } catch (error) {
                     console.error("ERRO no Checkout:", error);
@@ -419,17 +450,17 @@ export default function CheckoutPage() {
                 }}
               >
                 <Lock className="w-4 h-4" />
-                {isStripeLoading ? "Processando pagamento..." : "Ir para o Pagamento Seguro"}
+                {isStripeLoading
+                  ? "Processando pagamento..."
+                  : "Ir para o Pagamento Seguro"}
               </Button>
             </div>
           )}
         </div>
 
-        {/* COLUNA DIREITA (Resumo da Compra) */}
         <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4 order-1 lg:order-2">
           <OrderSummary items={items} shipping={selectedRate} total={total} />
         </div>
-
       </div>
     </div>
   );

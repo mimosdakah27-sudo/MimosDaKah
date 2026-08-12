@@ -7,13 +7,12 @@ import { formatBRL } from "@/lib/utils";
 interface OrderSummaryProps {
   items: any[];
   shipping: any;
-  total: number; // Pode ignorar ou usar apenas como fallback se necessário
+  total: number;
 }
 
 export function OrderSummary({ items, shipping }: OrderSummaryProps) {
   const totalQty = items.reduce((acc, i) => acc + i.quantity, 0);
 
-  // Cálculos consolidados usando preco_promocional
   const { originalSubtotal, currentSubtotal, totalEconomy } = items.reduce(
     (acc, i) => {
       const regularPrice = Number(i.product.preco) || 0;
@@ -36,55 +35,56 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
   
   const finalEconomy = totalEconomy + shippingEconomy;
 
-  // CORREÇÃO: Calculamos o total real somando o subproduto com desconto + o preço do frete atual
   const calculatedTotal = currentSubtotal + shippingPrice;
   const calculatedOriginalTotal = originalSubtotal + (originalShippingPrice > 0 ? originalShippingPrice : shippingPrice);
 
   return (
-    <Card className="border border-border/80 shadow-md rounded-2xl bg-card overflow-hidden">
-      <CardContent className="p-5 md:p-6 space-y-5">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <h3 className="font-bold text-base text-foreground">Resumo da compra</h3>
-          <span className="text-xs font-semibold text-muted-foreground bg-secondary px-2.5 py-1 rounded-full">
+    <Card>
+      <CardContent className="p-6 space-y-5">
+        <div className="flex items-center justify-between border-b pb-3">
+          <h3 className="font-semibold text-sm">Resumo da compra</h3>
+          <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md">
             {totalQty} {totalQty === 1 ? "item" : "itens"}
           </span>
         </div>
 
-        {/* Lista de Produtos */}
-        <div className="space-y-3.5 max-h-[340px] overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
           {items.map((item, index) => {
             const regularPrice = Number(item.product.preco) || 0;
             const promoPrice = item.product.preco_promocional ? Number(item.product.preco_promocional) : 0;
             const hasDiscount = promoPrice > 0 && promoPrice < regularPrice;
             const finalItemPrice = hasDiscount ? promoPrice : regularPrice;
 
+            // Alinhado com o banco: variantes usam name e tamanho
+            const variantName = item.product.name || null;
+            const variantSize = item.product.tamanho || null;
+
             return (
               <div 
-                key={`${item.product.id}-${item.product.variant_size_id || index}`} 
-                className="flex items-start gap-3.5 pb-3 border-b border-border/40 last:border-0 last:pb-0"
+                key={`${item.product.id}-${item.product.variant_id || index}`} 
+                className="flex items-start gap-3 pb-3 border-b last:border-0 last:pb-0"
               >
-                <div className="w-16 h-16 relative rounded-xl overflow-hidden bg-muted shrink-0 border border-border/40">
-                  <Image
-                    src={item.product.imagem_url}
-                    alt={item.product.nome}
-                    fill
-                    className="object-cover"
-                    sizes="64px"
+                <div className="w-14 h-14 relative rounded-md overflow-hidden bg-muted shrink-0 border">
+                  <Image 
+                    src={item.product.imagem_url} 
+                    alt={item.product.nome} 
+                    className="object-cover" 
+                    fill 
+                    sizes="56px" 
                   />
                 </div>
                 <div className="flex-1 min-w-0 text-xs space-y-1">
-                  <p className="font-semibold text-foreground truncate">{item.product.nome}</p>
+                  <p className="font-medium text-foreground truncate">{item.product.nome}</p>
                   
-                  {/* Exibição da Cor e Tamanho da Variante */}
-                  {(item.product.cor || item.product.tamanho) && (
+                  {(variantName || variantSize) && (
                     <p className="text-primary font-medium">
-                      {item.product.cor ? `Cor: ${item.product.cor}` : ""}
-                      {item.product.cor && item.product.tamanho ? " • " : ""}
-                      {item.product.tamanho ? `Tamanho: ${item.product.tamanho}` : ""}
+                      {variantName ? `Variante: ${variantName}` : ""}
+                      {variantName && variantSize ? " • " : ""}
+                      {variantSize ? `Tamanho: ${variantSize}` : ""}
                     </p>
                   )}
 
-                  <div className="flex justify-between items-center pt-0.5">
+                  <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">
                       {item.quantity}x{" "}
                       {hasDiscount && (
@@ -92,11 +92,11 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
                           {formatBRL(regularPrice)}
                         </span>
                       )}
-                      <span className={hasDiscount ? "font-bold text-foreground" : ""}>
+                      <span className={hasDiscount ? "font-semibold text-foreground" : ""}>
                         {formatBRL(finalItemPrice)}
                       </span>
                     </span>
-                    <span className="font-bold text-foreground">
+                    <span className="font-semibold text-foreground">
                       {formatBRL(finalItemPrice * item.quantity)}
                     </span>
                   </div>
@@ -106,9 +106,7 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
           })}
         </div>
 
-        {/* Totais e Frete */}
-        <div className="border-t border-border/60 pt-4 space-y-2.5 text-xs md:text-sm">
-          {/* Subtotal */}
+        <div className="border-t pt-4 space-y-2 text-xs">
           <div className="flex justify-between text-muted-foreground items-center">
             <span>Produtos ({totalQty})</span>
             <div className="text-right">
@@ -123,7 +121,6 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
             </div>
           </div>
 
-          {/* Frete */}
           <div className="flex justify-between text-muted-foreground items-center">
             <span>Envios</span>
             <div className="text-right">
@@ -135,7 +132,7 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
                         {formatBRL(originalShippingPrice)}
                       </span>
                     )}
-                    <span className="text-emerald-600 font-bold uppercase text-xs">
+                    <span className="text-emerald-600 font-semibold uppercase text-xs">
                       Grátis
                     </span>
                   </div>
@@ -150,9 +147,8 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
             </div>
           </div>
 
-          {/* Total */}
-          <div className="pt-3 border-t border-border/60 space-y-1">
-            <div className="flex justify-between font-black text-lg md:text-xl text-primary items-center">
+          <div className="pt-3 border-t space-y-1">
+            <div className="flex justify-between font-bold text-base text-foreground items-center">
               <span>Total</span>
               <div className="text-right flex flex-col items-end">
                 {calculatedOriginalTotal > calculatedTotal && (
@@ -164,7 +160,6 @@ export function OrderSummary({ items, shipping }: OrderSummaryProps) {
               </div>
             </div>
 
-            {/* Badge de Economia Total Estilo Mercado Livre */}
             {finalEconomy > 0 && (
               <div className="flex items-center justify-end gap-2 pt-1 text-xs font-semibold text-emerald-600">
                 <span>Economize {formatBRL(finalEconomy)}</span>

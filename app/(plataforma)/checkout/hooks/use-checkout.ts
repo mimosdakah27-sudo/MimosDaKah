@@ -68,6 +68,7 @@ export function useCheckout() {
     }
   }, [profile, form]);
 
+  // ... dentro da função onSubmit
   const onSubmit = (data: CheckoutFormData) => {
     if (items.length === 0) return;
 
@@ -81,6 +82,10 @@ export function useCheckout() {
         width: Number(i.product.width) || 0,
         height: Number(i.product.height) || 0,
         length: Number(i.product.length) || 0,
+        // Mapeamento das novas propriedades
+        variant_id: i.product.variant_id || null,
+        name: i.product.name || null, // Usando name conforme padronizado
+        tamanho: i.product.tamanho || null,
       })),
       _shipping_name: data.name,
       _shipping_address: data.address,
@@ -91,6 +96,7 @@ export function useCheckout() {
       _shipping_document: data.document,
     });
   };
+// ...
 
   return {
     form,
