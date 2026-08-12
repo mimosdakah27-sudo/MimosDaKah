@@ -3,7 +3,7 @@
 import { ProductPurchaseBox } from "@/components/site/product-purchase-box";
 import { ProductReviews } from "@/components/site/product-reviews";
 import { cn } from "@/lib/utils";
-import Image from "next/image"; // <--- Importar o Image do Next.js
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 export function ProductMainLayout({
@@ -32,19 +32,13 @@ export function ProductMainLayout({
     return [product.imagem_url].filter(Boolean);
   }, [currentVariant, product.imagem_url]);
 
-  // Características consolidadas...
-  const coresDisponiveis = Array.from(
-    new Set(variants.map((v: any) => v.cor).filter(Boolean)),
+  // Características consolidadas das variações usando 'name' em vez de 'cor'
+  const nomesDisponiveis = Array.from(
+    new Set(variants.map((v: any) => v.name).filter(Boolean)),
   ).join(", ");
-  const estampasDisponiveis = Array.from(
-    new Set(variants.map((v: any) => v.padrao_tecido).filter(Boolean)),
-  ).join(", ");
-  const tamanhosDisponiveis = Array.from(
-    new Set(
-      variants
-        .flatMap((v: any) => (v.variant_sizes || []).map((s: any) => s.tamanho))
-        .filter(Boolean),
-    ),
+  
+  const materiaisDisponiveis = Array.from(
+    new Set(variants.map((v: any) => v.material).filter(Boolean)),
   ).join(", ");
 
   return (
@@ -78,7 +72,7 @@ export function ProductMainLayout({
             ))}
           </div>
 
-          {/* Imagem Principal (Otimizada para LCP com priority no primeiro índice) */}
+          {/* Imagem Principal */}
           <div className="relative flex-1 rounded-xl overflow-hidden bg-muted flex items-center justify-center min-h-[380px] sm:min-h-[425px] order-1 sm:order-2">
             {currentImages[activeImageIndex] ? (
               <Image
@@ -115,52 +109,22 @@ export function ProductMainLayout({
           Características do produto
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          {product.marca && (
+          {nomesDisponiveis && (
             <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Marca</span>
-              <span className="font-medium text-foreground">{product.marca}</span>
+              <span className="text-muted-foreground">Variações</span>
+              <span className="font-medium text-foreground capitalize">{nomesDisponiveis}</span>
             </div>
           )}
-          {product.modelo && (
+          {materiaisDisponiveis && (
             <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Modelo</span>
-              <span className="font-medium text-foreground">{product.modelo}</span>
+              <span className="text-muted-foreground">Material</span>
+              <span className="font-medium text-foreground capitalize">{materiaisDisponiveis}</span>
             </div>
           )}
-          {product.condicao && (
-            <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Condição</span>
-              <span className="font-medium text-foreground capitalize">{product.condicao}</span>
-            </div>
-          )}
-          {product.categoria && (
-            <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Categoria</span>
-              <span className="font-medium text-foreground">{product.categoria}</span>
-            </div>
-          )}
-          {coresDisponiveis && (
-            <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Cores disponíveis</span>
-              <span className="font-medium text-foreground capitalize">{coresDisponiveis}</span>
-            </div>
-          )}
-          {estampasDisponiveis && (
-            <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Estampas</span>
-              <span className="font-medium text-foreground capitalize">{estampasDisponiveis}</span>
-            </div>
-          )}
-          {tamanhosDisponiveis && (
-            <div className="flex justify-between py-2 border-b border-border/45">
-              <span className="text-muted-foreground">Tamanhos</span>
-              <span className="font-medium text-foreground">{tamanhosDisponiveis}</span>
-            </div>
-          )}
-          {product.peso !== null && product.peso !== undefined && (
+          {product.weight !== null && product.weight !== undefined && (
             <div className="flex justify-between py-2 border-b border-border/45">
               <span className="text-muted-foreground">Peso</span>
-              <span className="font-medium text-foreground">{product.peso} kg</span>
+              <span className="font-medium text-foreground">{product.weight} kg</span>
             </div>
           )}
           {product.garantia_dias !== null && product.garantia_dias > 0 && (

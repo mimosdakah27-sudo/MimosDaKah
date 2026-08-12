@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import Image from "next/image";
 
 import {
   DropdownMenu,
@@ -66,12 +67,17 @@ export function SiteHeader() {
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border/50">
         <div className="px-3 sm:px-6 lg:px-10 py-3.5 flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="h-9 w-9 rounded-xl bg-primary shadow-glow flex items-center justify-center">
-              <span className="font-bold text-primary-foreground text-lg">
-                {config?.name.charAt(0) || "I"}
-              </span>
+            <div className="h-9 w-9 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center relative border border-border/40">
+              <Image
+                src="/logo.png"
+                alt={config?.name || "Logo"}
+                fill
+                className="object-cover"
+                sizes="36px"
+                priority
+              />
             </div>
-            <span className="font-bold text-lg sm:text-xl tracking-tight hidden sm:block truncate max-w-[180px] md:max-w-none">
+            <span className="font-bold text-sm sm:text-xl tracking-tight block truncate max-w-[120px] sm:max-w-[180px] md:max-w-none">
               {config?.name || "Loja"}
             </span>
           </Link>
@@ -203,40 +209,37 @@ export function SiteHeader() {
 
       {/* --- MODAL DE CONFIRMAÇÃO DE LOGOUT ALTAMENTE RESPONSIVO --- */}
       <Dialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-[400px] rounded-2xl p-5 sm:p-6 bg-background border border-border/80 shadow-2xl mx-auto">
-          <DialogHeader className="space-y-2.5 flex flex-col items-center text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive mb-1">
-              <LogOut className="h-6 w-6" />
-            </div>
-            <DialogTitle className="text-lg sm:text-xl font-bold">Deseja realmente sair?</DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-              Você precisará fazer login novamente para acessar seus pedidos, carrinho e dados da conta.
-            </DialogDescription>
-          </DialogHeader>
+  <DialogContent>
+    <DialogHeader className="items-center text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-2">
+        <LogOut className="h-6 w-6" />
+      </div>
+      <DialogTitle>Deseja realmente sair?</DialogTitle>
+      <DialogDescription>
+        Você precisará fazer login novamente para acessar seus pedidos, carrinho e dados da conta.
+      </DialogDescription>
+    </DialogHeader>
 
-          {/* Rodapé com botões perfeitamente alinhados e de tamanho uniforme */}
-          <DialogFooter className="pt-2">
-            <div className="grid grid-cols-2 gap-2.5 w-full">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowLogoutDialog(false)}
-                className="w-full h-11 rounded-xl text-xs sm:text-sm font-semibold border-border/80 hover:bg-secondary"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleLogout}
-                className="w-full min-h-11 rounded-xl text-xs sm:text-sm font-semibold shadow-xs"
-              >
-                Sim, sair
-              </Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+    <DialogFooter className="gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setShowLogoutDialog(false)}
+        className="flex-1"
+      >
+        Cancelar
+      </Button>
+      <Button
+        type="button"
+        variant="destructive"
+        onClick={handleLogout}
+        className="flex-1"
+      >
+        Sim, sair
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
     </>
   );
 }

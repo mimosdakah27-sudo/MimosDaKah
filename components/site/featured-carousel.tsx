@@ -7,18 +7,23 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import type { Product } from "@/lib/types/admin-types";
 import { formatBRL } from "@/lib/utils";
+import type { Database } from "@/types/database";
 import { motion } from "framer-motion";
 import { ArrowRight, Tag, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
 
+type ProductRow = Database["public"]["Tables"]["products"]["Row"] & {
+  destaque?: boolean;
+  preco_promocional?: number | null;
+};
+
 interface FeaturedCarouselProps {
-  products: Product[];
+  products: ProductRow[];
   isAdmin?: boolean;
-  actions?: (product: Product) => React.ReactNode;
+  actions?: (product: ProductRow) => React.ReactNode;
 }
 
 export function FeaturedCarousel({
@@ -95,12 +100,6 @@ export function FeaturedCarousel({
                           {percentageOff}% OFF
                         </span>
                       )}
-                    </div>
-
-                    <div className="flex items-center gap-1.5 text-[10px] md:text-xs uppercase tracking-wider text-muted-foreground font-bold">
-                      {product.marca && <span>{product.marca}</span>}
-                      {product.marca && product.categoria && <span>•</span>}
-                      {product.categoria && <span>{product.categoria}</span>}
                     </div>
 
                     <h3 className="text-xs md:text-lg font-bold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">

@@ -31,7 +31,6 @@ export function ProductReviews({ productId, initialReviews }: Props) {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Encontra a avaliação do usuário logado
   const userReview = initialReviews.find((r) => r.user_id === user?.id);
 
   const [isEditing, setIsEditing] = React.useState(false);
@@ -39,11 +38,8 @@ export function ProductReviews({ productId, initialReviews }: Props) {
   const [hoverRating, setHoverRating] = React.useState(0);
   const [comment, setComment] = React.useState(userReview?.comment || "");
   const [loading, setLoading] = React.useState(false);
-
-  // Estado para controlar a abertura do modal de exclusão
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
 
-  // Atualiza estados quando a avaliação inicial carregar ou mudar
   React.useEffect(() => {
     if (userReview) {
       setRating(userReview.rating);
@@ -109,26 +105,24 @@ export function ProductReviews({ productId, initialReviews }: Props) {
   return (
     <div className="space-y-6 pt-4 border-t">
       <div className="flex flex-wrap items-center justify-between gap-3">
-  {/* Título com truncamento caso o texto seja muito longo */}
-  <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">
-    Avaliações dos Clientes
-  </h2>
+        <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground truncate">
+          Avaliações dos Clientes
+        </h2>
 
-  {initialReviews.length > 0 && (
-    <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/50 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-border/60 shrink-0 whitespace-nowrap">
-      <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-primary text-primary shrink-0" />
-      <span className="font-bold text-xs sm:text-sm text-foreground">
-        {avg.toFixed(1)}
-      </span>
-      <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">
-        ({initialReviews.length}{" "}
-        {initialReviews.length === 1 ? "avaliação" : "avaliações"})
-      </span>
-    </div>
-  )}
-</div>
+        {initialReviews.length > 0 && (
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/50 px-3 py-1.5 rounded-full border border-border/60 shrink-0 whitespace-nowrap">
+            <Star className="h-4 w-4 fill-primary text-primary shrink-0" />
+            <span className="font-bold text-sm text-foreground">
+              {avg.toFixed(1)}
+            </span>
+            <span className="text-xs text-muted-foreground font-medium">
+              ({initialReviews.length}{" "}
+              {initialReviews.length === 1 ? "avaliação" : "avaliações"})
+            </span>
+          </div>
+        )}
+      </div>
 
-      {/* Bloco de Avaliação do Usuário Logado */}
       {user && (
         <div className="rounded-xl border bg-card p-5 space-y-4 shadow-sm">
           {userReview && !isEditing ? (
@@ -156,14 +150,14 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                   onClick={() => setIsEditing(true)}
                   title="Editar"
                 >
-                  <Edit2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                  <Edit2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={() => setIsDeleteModalOpen(true)}
                   title="Excluir"
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -198,7 +192,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="O que você achou do produto? Compartilhe sua experiência..."
-                className="min-h-[100px] rounded-xl resize-none"
+                className="min-h-[100px] resize-none"
               />
 
               <div className="flex gap-2 justify-end">
@@ -210,7 +204,6 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                       setRating(userReview.rating);
                       setComment(userReview.comment);
                     }}
-                    className="rounded-xl"
                   >
                     <X className="h-4 w-4 mr-2" /> Cancelar
                   </Button>
@@ -218,7 +211,6 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                 <Button
                   onClick={handleSubmit}
                   disabled={loading || rating === 0}
-                  className="rounded-xl font-semibold px-5"
                 >
                   {loading
                     ? "Salvando..."
@@ -232,7 +224,6 @@ export function ProductReviews({ productId, initialReviews }: Props) {
         </div>
       )}
 
-      {/* Lista de Outras Avaliações */}
       <div className="space-y-3">
         {initialReviews.filter((r) => r.user_id !== user?.id).length === 0 &&
           !userReview && (
@@ -264,36 +255,31 @@ export function ProductReviews({ productId, initialReviews }: Props) {
           ))}
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DA AVALIAÇÃO */}
       <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader className="space-y-3">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+        <DialogContent>
+          <DialogHeader>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-2">
               <AlertTriangle className="h-6 w-6" />
             </div>
-            <DialogTitle className="text-center text-xl font-bold">
-              Excluir sua avaliação?
-            </DialogTitle>
-            <DialogDescription className="text-center text-sm text-muted-foreground">
+            <DialogTitle className="text-center">Excluir sua avaliação?</DialogTitle>
+            <DialogDescription className="text-center">
               Tem certeza de que deseja remover sua avaliação deste produto?
               Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="flex gap-2 sm:justify-center pt-2">
+          <DialogFooter className="gap-2 sm:justify-center pt-2">
             <Button
-              type="button"
               variant="outline"
-              className="flex-1 rounded-xl"
+              className="flex-1"
               onClick={() => setIsDeleteModalOpen(false)}
               disabled={loading}
             >
               Cancelar
             </Button>
             <Button
-              type="button"
               variant="destructive"
-              className="flex-1 rounded-xl font-semibold"
+              className="flex-1"
               disabled={loading}
               onClick={handleDelete}
             >

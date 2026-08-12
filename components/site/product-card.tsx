@@ -27,7 +27,6 @@ export function ProductCard({
   actions,
 }: ProductCardProps) {
   const isAtivo = product.ativo !== false;
-  const isOutOfStock = product.estoque <= 0;
 
   // Lógica de preços e desconto
   const precoRegular = product.preco || 0;
@@ -64,23 +63,13 @@ export function ProductCard({
           alt={product.nome}
           fill
           sizes="(max-width: 640px) 50vw, 25vw"
-          /* object-cover garante preenchimento total e perfeito do container */
           className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
-
-        {isOutOfStock && (
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center font-bold text-xs uppercase tracking-widest z-20 text-muted-foreground">
-            Esgotado
-          </div>
-        )}
       </div>
 
       {/* Conteúdo do Card */}
       <div className="p-2.5 flex flex-col flex-grow gap-1.5 relative z-20 justify-between">
         <div className="space-y-0.5">
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold block truncate">
-            {product.categoria || product.marca}
-          </span>
           <h3 className="text-xs font-medium text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
             {product.nome}
           </h3>
