@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/utils";
 import { useProfile } from "./hooks/use-profile";
 import { BackButton } from "@/components/site/back-button";
-import { Package, Truck, MapPin, CalendarDays, ReceiptText, ExternalLink } from "lucide-react";
+import { Truck, MapPin, CalendarDays, ReceiptText, ExternalLink } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, orders } = useProfile();
@@ -24,7 +24,7 @@ export default function ProfilePage() {
         <h2 className="text-xl font-bold tracking-tight text-foreground">Meus pedidos</h2>
         
         {orders.length === 0 ? (
-          <Card className="rounded-xl border border-border bg-card">
+          <Card>
             <CardContent className="py-12 text-center text-muted-foreground font-medium text-sm">
               Você ainda não fez nenhum pedido.
             </CardContent>
@@ -32,8 +32,8 @@ export default function ProfilePage() {
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
-              <Card key={order.id} className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b border-border/50">
+              <Card key={order.id} className="overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="space-y-0.5">
                       <CardTitle className="text-lg">Pedido #{order.id.slice(0, 8)}</CardTitle>
@@ -42,14 +42,14 @@ export default function ProfilePage() {
                         {new Date(order.created_at).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
-                    <Badge className="rounded-md uppercase tracking-wider font-extrabold text-[10px] px-3 py-1 bg-primary text-primary-foreground shadow-sm">
+                    <Badge className="rounded-md uppercase tracking-wider font-extrabold text-[10px] px-3 py-1">
                       {order.status}
                     </Badge>
                   </div>
                 </CardHeader>
                 
                 <CardContent className="pt-6 space-y-6">
-                  {/* Produtos do Pedido com suporte a variantes (Cor e Tamanho) salvos na order_items */}
+                  {/* Produtos do Pedido com suporte a variantes (name e tamanho) salvos em order_items */}
                   <div className="space-y-3">
                     <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Produtos</h4>
                     {order.order_items.map((it) => (
@@ -60,11 +60,11 @@ export default function ProfilePage() {
                         <div className="flex-1 min-w-0 text-xs space-y-1">
                           <p className="font-semibold text-foreground truncate">{it.product_name}</p>
                           
-                          {/* Exibição da Cor e Tamanho da Variante salva no item */}
-                          {(it.cor || it.tamanho) && (
+                          {/* Exibição alinhada ao DB: name e tamanho */}
+                          {(it.name || it.tamanho) && (
                             <p className="text-primary font-medium">
-                              {it.cor ? `Cor: ${it.cor}` : ""}
-                              {it.cor && it.tamanho ? " • " : ""}
+                              {it.name ? `Variante: ${it.name}` : ""}
+                              {it.name && it.tamanho ? " • " : ""}
                               {it.tamanho ? `Tamanho: ${it.tamanho}` : ""}
                             </p>
                           )}
@@ -80,14 +80,13 @@ export default function ProfilePage() {
                     ))}
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-6 pt-4 border-t border-border">
+                  <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
                     {/* Logística */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-sm font-bold text-foreground">
                         <Truck className="h-4 w-4 text-primary" /> Informações de Entrega
                       </div>
-                      <div className="bg-muted/40 p-3 rounded-lg text-xs text-muted-foreground space-y-2 border border-border/50">
-                        {/* Identificação do tipo de entrega */}
+                      <div className="bg-muted/40 p-3 rounded-lg text-xs text-muted-foreground space-y-2 border">
                         <p className="font-bold text-foreground">
                           {order.shipping_type === 'retirada' 
                             ? "Retirada na Loja" 
@@ -96,7 +95,6 @@ export default function ProfilePage() {
                               : "Envio por Transportadora"}
                         </p>
 
-                        {/* Endereço ou Local de Retirada */}
                         {order.shipping_type !== 'retirada' && (
                           <p className="flex items-start gap-2">
                             <MapPin className="h-3.5 w-3.5 mt-0.5" /> 
@@ -104,7 +102,6 @@ export default function ProfilePage() {
                           </p>
                         )}
 
-                        {/* Lógica de Rastreio/Status */}
                         {order.shipping_type === 'melhor_envio' ? (
                           order.tracking_code ? (
                             <a 
@@ -142,7 +139,7 @@ export default function ProfilePage() {
                           <span>Frete</span>
                           <span>{formatBRL(Number(order.shipping_cost || 0))}</span>
                         </div>
-                        <div className="flex justify-between text-base font-black text-foreground pt-2 border-t border-border">
+                        <div className="flex justify-between text-base font-bold text-foreground pt-2 border-t">
                           <span>Total</span>
                           <span className="text-primary">{formatBRL(Number(order.total))}</span>
                         </div>

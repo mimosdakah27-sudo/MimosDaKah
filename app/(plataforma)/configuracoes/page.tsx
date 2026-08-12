@@ -16,6 +16,9 @@ import {
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { maskCEP, maskPhone, unmask } from "@/lib/utils";
 import { yupResolver } from "@hookform/resolvers/yup";
 
@@ -31,7 +34,6 @@ export default function ConfiguracoesPage() {
     control,
     handleSubmit,
     reset,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<StoreConfig>({
     resolver: yupResolver(storeConfigSchema),
@@ -60,17 +62,16 @@ export default function ConfiguracoesPage() {
   return (
     <div className="mx-auto space-y-6">
       {/* Status Melhor Envio */}
-      {/* Bloco condicional: Só aparece se a loja já estiver configurada */}
       {!isLoading && isConfigured && (
         <div
-          className={`border p-5 md:p-6 rounded-2xl md:rounded-3xl shadow-sm ${isConnected ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}
+          className={`border p-5 rounded-xl shadow-sm ${isConnected ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-base md:text-lg font-bold flex items-center gap-2 text-slate-900">
+              <h2 className="text-base font-bold flex items-center gap-2 text-slate-900">
                 <Package size={20} /> Melhor Envio
               </h2>
-              <p className="text-xs md:text-sm mt-1 text-slate-600">
+              <p className="text-xs sm:text-sm mt-1 text-slate-600">
                 {isConnected === null
                   ? "Verificando..."
                   : isConnected
@@ -78,12 +79,15 @@ export default function ConfiguracoesPage() {
                     : "Loja desconectada da API."}
               </p>
             </div>
-            <a
-              href="/api/melhor-envio/login"
-              className="w-full sm:w-auto text-center px-6 py-2.5 rounded-xl text-sm font-bold text-white transition bg-blue-600 hover:bg-blue-700"
-            >
-              {isConnected ? "Reconectar" : "Conectar Agora"}
-            </a>
+            <Button
+              render={
+                <a href="/api/melhor-envio/login">
+                  {isConnected ? "Reconectar" : "Conectar Agora"}
+                </a>
+              }
+              nativeButton={false}
+              className="w-full sm:w-auto"
+            ></Button>
           </div>
         </div>
       )}
@@ -99,17 +103,17 @@ export default function ConfiguracoesPage() {
           </p>
         </div>
         {!isEditing && (
-          <button
+          <Button
             onClick={() => setIsEditing(true)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 font-medium bg-primary text-primary-foreground hover:opacity-90 rounded-xl transition"
+            className="w-full sm:w-auto gap-2"
           >
             <Pencil size={18} /> Editar Informações
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Card Principal */}
-      <div className="bg-card border border-border/50 rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-sm">
+      <div className="bg-card border border-border/50 rounded-2xl p-5 md:p-8 shadow-sm">
         {!isEditing ? (
           <div className="space-y-8 md:space-y-12">
             <div className="border-b border-border/50 pb-6">
@@ -270,19 +274,21 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={() => {
                   reset();
                   setIsEditing(false);
                 }}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold bg-secondary hover:bg-secondary/80"
+                className="w-full sm:w-auto"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
+                type="submit"
                 disabled={isSubmitting}
-                className="flex-1 flex justify-center items-center gap-2 bg-emerald-600 text-white py-3 rounded-xl font-bold transition"
+                className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" />
@@ -290,7 +296,7 @@ export default function ConfiguracoesPage() {
                   <Save size={18} />
                 )}{" "}
                 Salvar Alterações
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -313,18 +319,17 @@ function ControlledInput({
       name={name}
       render={({ field: { onChange, value } }) => (
         <div className="space-y-1.5">
-          <label className="text-xs font-bold text-muted-foreground uppercase">
-            {label}
-          </label>
-          <input
+          <Label htmlFor={name}>{label}</Label>
+          <Input
+            id={name}
             value={mask ? mask(value || "") : value || ""}
             onChange={(e) =>
               onChange(mask ? unmask(e.target.value) : e.target.value)
             }
-            className={`w-full bg-background border border-input px-4 py-2.5 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 ${className || ""}`}
+            className={className}
           />
           {errors[name] && (
-            <p className="text-xs text-red-500">
+            <p className="text-xs text-red-500 font-bold">
               {errors[name]?.message as string}
             </p>
           )}

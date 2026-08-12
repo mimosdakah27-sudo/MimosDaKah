@@ -6,18 +6,17 @@ import type { CartProduct } from "@/lib/store/types";
 
 export function AddToCartButton({ product }: { product: CartProduct }) {
   const add = useCart((s) => s.add);  
-  console.log("AddToCartButton product:", product); // Adicione este log para depuração
-  console.log
+  console.log("AddToCartButton product:", product);
+  
   return (
     <Button 
       variant="outline"
       size="lg" 
-      className="w-full h-12 text-sm font-semibold border-primary/40 text-primary hover:bg-primary/10" 
-      disabled={product.estoque <= 0} 
+      className="w-full h-12 text-sm font-semibold border-primary/40 text-primary hover:bg-primary/10 rounded-2xl" 
       onClick={() => add(product, 1)}
     >
       <ShoppingBag className="h-4 w-4 mr-2" />
-      {product.estoque > 0 ? "Adicionar ao carrinho" : "Esgotado"}
+      Adicionar ao carrinho
     </Button>
   );
 }

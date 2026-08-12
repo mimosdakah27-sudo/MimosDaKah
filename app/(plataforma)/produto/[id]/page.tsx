@@ -1,5 +1,5 @@
 import { BackButton } from "@/components/site/back-button";
-import { ProductMainLayout } from "@/components/site/product-main-layout"; // Componente cliente que criaremos/ajustaremos
+import { ProductMainLayout } from "@/components/site/product-main-layout";
 import { notFound } from "next/navigation";
 import { getProductDetails } from "./hooks/use-product-details";
 
@@ -23,12 +23,12 @@ export default async function ProductPage(props: {
   if (!details) return notFound();
 
   const { product, variants, reviews } = details;
-console.log("ProductPage details:", details); // Adicione este log para depuração
+  console.log("ProductPage details:", details);
+  
   return (
     <div className="mx-auto">
       <BackButton />
 
-      {/* Componente que gerencia o estado compartilhado entre carrossel lateral e buy box */}
       <ProductMainLayout
         product={product}
         variants={variants}

@@ -93,22 +93,20 @@ export default function AddressPage() {
   };
 
   return (
-    <div className="pb-14">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight">
-          Meus Endereços
-        </h1>
-        <p className="text-muted-foreground">
+    <div className="space-y-6 pb-12">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Meus Endereços</h1>
+        <p className="text-sm text-muted-foreground">
           Gerencie seus endereços de entrega.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* FORM */}
         <div className="lg:col-span-2">
-          <div className="bg-card border p-6 rounded-2xl shadow-sm">
+          <div className="bg-card border p-6 rounded-xl space-y-4 shadow-sm">
             <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
-              <fieldset disabled={isPending}>
+              <fieldset disabled={isPending} className="space-y-4">
                 <InputGroup
                   label="CEP"
                   placeholder="00000-000"
@@ -140,7 +138,7 @@ export default function AddressPage() {
                   />
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-2">
                   {editingId && (
                     <button
                       type="button"
@@ -148,7 +146,7 @@ export default function AddressPage() {
                         setEditingId(null);
                         form.reset();
                       }}
-                      className="w-full mt-6 bg-secondary text-secondary-foreground py-3 rounded-xl font-bold transition-opacity hover:opacity-90"
+                      className="w-full bg-secondary text-secondary-foreground py-2.5 rounded-lg font-medium transition-colors hover:bg-secondary/80"
                     >
                       Cancelar
                     </button>
@@ -156,7 +154,7 @@ export default function AddressPage() {
                   <button
                     type="submit"
                     disabled={isPending}
-                    className="w-full mt-6 bg-primary text-white py-3 rounded-xl font-bold transition-opacity hover:opacity-90"
+                    className="w-full bg-primary text-primary-foreground py-2.5 rounded-lg font-medium transition-colors hover:bg-primary/90"
                   >
                     {isPending
                       ? "Salvando..."
@@ -173,48 +171,47 @@ export default function AddressPage() {
         {/* LISTA */}
         <div className="lg:col-span-1">
           {addresses.length === 0 ? (
-            <div className="border-2 border-dashed border-border rounded-2xl p-10 flex flex-col items-center text-center space-y-4">
-              <div className="bg-primary/10 p-4 rounded-full text-primary">
-                <MapPin size={32} />
+            <div className="border border-dashed border-border rounded-xl p-8 flex flex-col items-center text-center space-y-3 bg-card">
+              <div className="bg-primary/10 p-3 rounded-full text-primary">
+                <MapPin size={24} />
               </div>
-              <h3 className="font-bold text-xl">Nenhum endereço cadastrado</h3>
-              <p className="text-muted-foreground max-w-sm text-sm">
+              <h3 className="font-semibold text-base">Nenhum endereço cadastrado</h3>
+              <p className="text-muted-foreground text-xs max-w-xs">
                 Adicione um endereço para facilitar suas compras.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {addresses.map((addr: any) => (
                 <div
                   key={addr.id}
-                  className={`group relative border rounded-2xl p-5 transition-all ${addr.active ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 bg-card"}`}
+                  className={`border rounded-xl p-4 transition-colors ${addr.active ? "border-primary bg-primary/5" : "border-border bg-card"}`}
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3">
                     <div
-                      className={`mt-1 p-2 rounded-full ${addr.active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                      className={`mt-0.5 p-2 rounded-full ${addr.active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                     >
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-center gap-2">
-                        {/* Alterado de h3 para h4 para manter a hierarquia de títulos correta */}
-                        <h4 className="font-semibold text-foreground">
+                        <h4 className="font-semibold text-sm text-foreground">
                           {addr.street}
                         </h4>
                         {addr.active && (
-                          <span className="text-[10px] uppercase font-bold tracking-wider bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] uppercase font-bold tracking-wide bg-primary/10 text-primary px-2 py-0.5 rounded">
                             Principal
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {addr.city}, {addr.state}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         CEP: {addr.zip_code}
                       </p>
                     </div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-1">
                       <button
                         type="button"
                         onClick={() => handleEdit(addr)}
@@ -237,7 +234,7 @@ export default function AddressPage() {
                     <button
                       type="button"
                       onClick={() => setActiveId(addr.id)}
-                      className="w-full mt-4 text-xs font-semibold text-primary hover:bg-primary/10 py-2 rounded-lg transition-colors"
+                      className="w-full mt-3 text-xs font-semibold text-primary hover:bg-primary/10 py-1.5 rounded transition-colors"
                     >
                       Definir como principal
                     </button>
