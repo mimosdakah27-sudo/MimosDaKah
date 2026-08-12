@@ -58,7 +58,7 @@ export async function POST(req: Request) {
         ? shippingData.company
         : shippingData.name;
 
-      const statusInicial = metadata.status
+      const statusInicial = metadata.status;
 
       // 2. Inserir o pedido principal no banco de dados
       const { data: order, error: orderError } = await supabaseAdmin
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
       console.log(`[WEBHOOK STRIPE] Pedido ${order.id} criado com sucesso no banco.`);
 
-      // 3. Montar itens para salvar em order_items resolvendo a imagem e variantes com logs de debug
+      // 3. Montar itens para salvar em order_items resolvendo a imagem e variantes
       const itemsToInsert = [];
       for (const item of minimalItems) {
         const { data: product } = await supabaseAdmin
@@ -108,19 +108,17 @@ export async function POST(req: Request) {
 
         if (product) {
           let variantImage = product.imagem_url;
-          let variantColor = item.cor || null;
-          let variantSize = item.tamanho || item.size || null;
+          let variantName = item.name || null;
+          let variantSize = item.tamanho || null;
 
-          // Mapeia todas as possíveis chaves que o checkout pode enviar para o ID da variante e tamanho
-          const variantId = item.variantId || item.v || item.variant_id || null;
-          const sizeId = item.sizeId || item.sz || item.variant_size_id || null;
+          const variantId = item.v || item.variant_id || null;
 
-          console.log(`[DEBUG ITEM] Processando produto ID: ${item.id}, variantId detectado: ${variantId}, sizeId detectado: ${sizeId}`);
+          console.log(`[DEBUG ITEM] Processando produto ID: ${item.id}, variantId detectado: ${variantId}`);
 
           if (variantId) {
             const { data: variantData, error: varErr } = await supabaseAdmin
               .from("product_variants")
-              .select("cor, imagens")
+              .select("name, imagens")
               .eq("id", variantId)
               .single();
 
@@ -129,9 +127,8 @@ export async function POST(req: Request) {
             }
 
             if (variantData) {
-              if (variantData.cor) variantColor = variantData.cor;
+              if (variantData.name) variantName = variantData.name;
               
-              // Garante a extração correta da 1ª imagem do array jsonb
               if (variantData.imagens) {
                 let parsedImages = variantData.imagens;
                 if (typeof parsedImages === "string") {
@@ -152,18 +149,6 @@ export async function POST(req: Request) {
             console.log(`[DEBUG ITEM] Produto ${item.id} sem variantId. Usando imagem padrão do produto: ${variantImage}`);
           }
 
-          if (sizeId) {
-            const { data: sizeData } = await supabaseAdmin
-              .from("variant_sizes")
-              .select("tamanho")
-              .eq("id", sizeId)
-              .single();
-
-            if (sizeData && sizeData.tamanho) {
-              variantSize = sizeData.tamanho;
-            }
-          }
-
           itemsToInsert.push({
             order_id: order.id,
             product_id: product.id,
@@ -176,8 +161,7 @@ export async function POST(req: Request) {
             item_height: product.height || 0,
             item_length: product.length || 0,
             variant_id: variantId,
-            variant_size_id: sizeId,
-            cor: variantColor,
+            name: variantName,
             tamanho: variantSize,
           });
         }
@@ -193,98 +177,14 @@ export async function POST(req: Request) {
         throw new Error("Erro ao salvar itens do pedido");
       }
 
-      // 4. CONTROLE DE ESTOQUE
-      const stockUpdatesMap = new Map<string, { productId: string; sizeId?: string; quantity: number }>();
-
+      // Revalidação de produtos alterados
       for (const item of minimalItems) {
-        if (!item.id) continue;
-        const sizeId = item.sizeId || item.sz || item.variant_size_id;
-        const key = `${item.id}_${sizeId || 'no_size'}`;
-
-        if (stockUpdatesMap.has(key)) {
-          stockUpdatesMap.get(key)!.quantity += Number(item.q || 0);
-        } else {
-          stockUpdatesMap.set(key, {
-            productId: item.id,
-            sizeId: sizeId || undefined,
-            quantity: Number(item.q || 0),
-          });
+        if (item.id) {
+          await revalidateProductFull(item.id);
         }
       }
 
-      const productIdsToRevalidate = new Set<string>();
-
-      for (const [, updateInfo] of stockUpdatesMap) {
-        productIdsToRevalidate.add(updateInfo.productId);
-
-        if (updateInfo.sizeId) {
-          const { data: sizeData, error: sizeErr } = await supabaseAdmin
-            .from("variant_sizes")
-            .select("estoque")
-            .eq("id", updateInfo.sizeId)
-            .single();
-
-          if (!sizeErr && sizeData) {
-            const novoEstoqueTamanho = Math.max(0, Number(sizeData.estoque) - updateInfo.quantity);
-            await supabaseAdmin
-              .from("variant_sizes")
-              .update({ estoque: novoEstoqueTamanho })
-              .eq("id", updateInfo.sizeId);
-
-            console.log(`[ESTOQUE] Tamanho ID ${updateInfo.sizeId} decrementado em ${updateInfo.quantity}. Novo estoque: ${novoEstoqueTamanho}`);
-          }
-        } else {
-          const { data: prodData } = await supabaseAdmin
-            .from("products")
-            .select("estoque")
-            .eq("id", updateInfo.productId)
-            .single();
-
-          if (prodData) {
-            const novoEstoqueGeral = Math.max(0, Number(prodData.estoque) - updateInfo.quantity);
-            await supabaseAdmin
-              .from("products")
-              .update({ estoque: novoEstoqueGeral })
-              .eq("id", updateInfo.productId);
-
-            console.log(`[ESTOQUE] Produto pai ${updateInfo.productId} decrementado em ${updateInfo.quantity}. Novo estoque: ${novoEstoqueGeral}`);
-          }
-        }
-      }
-
-      for (const productId of productIdsToRevalidate) {
-        const { data: variantsList } = await supabaseAdmin
-          .from("product_variants")
-          .select(`
-            id,
-            variant_sizes (
-              estoque
-            )
-          `)
-          .eq("product_id", productId);
-
-        if (variantsList && variantsList.length > 0) {
-          let estoqueTotalCalculado = 0;
-          for (const v of variantsList) {
-            if (v.variant_sizes && Array.isArray(v.variant_sizes)) {
-              for (const s of v.variant_sizes) {
-                estoqueTotalCalculado += Number(s.estoque || 0);
-              }
-            }
-          }
-
-          await supabaseAdmin
-            .from("products")
-            .update({ estoque: estoqueTotalCalculado })
-            .eq("id", productId);
-
-          console.log(`[ESTOQUE] Estoque geral do produto ${productId} recalculado: ${estoqueTotalCalculado}`);
-        }
-
-        await revalidateProductFull(productId);
-      }
-
-      // 5. INTEGRAÇÃO COM MELHOR ENVIO
+      // 4. INTEGRAÇÃO COM MELHOR ENVIO
       if (metadata.shippingType === 'retirada' || metadata.shippingType === 'entrega_propria') {
         console.log(`[WEBHOOK STRIPE] Pedido ${order.id} local. Nenhuma ação externa necessária.`);
       } else {
