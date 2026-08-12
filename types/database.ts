@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -73,12 +98,12 @@ export type Database = {
       }
       order_items: {
         Row: {
-          cor: string | null
           id: string
           item_height: number | null
           item_length: number | null
           item_weight: number | null
           item_width: number | null
+          name: string | null
           order_id: string
           product_id: string | null
           product_image: string
@@ -87,15 +112,14 @@ export type Database = {
           tamanho: string | null
           unit_price: number
           variant_id: string | null
-          variant_size_id: string | null
         }
         Insert: {
-          cor?: string | null
           id?: string
           item_height?: number | null
           item_length?: number | null
           item_weight?: number | null
           item_width?: number | null
+          name?: string | null
           order_id: string
           product_id?: string | null
           product_image: string
@@ -104,15 +128,14 @@ export type Database = {
           tamanho?: string | null
           unit_price: number
           variant_id?: string | null
-          variant_size_id?: string | null
         }
         Update: {
-          cor?: string | null
           id?: string
           item_height?: number | null
           item_length?: number | null
           item_weight?: number | null
           item_width?: number | null
+          name?: string | null
           order_id?: string
           product_id?: string | null
           product_image?: string
@@ -121,7 +144,6 @@ export type Database = {
           tamanho?: string | null
           unit_price?: number
           variant_id?: string | null
-          variant_size_id?: string | null
         }
         Relationships: [
           {
@@ -129,27 +151,6 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "order_items_variant_size_id_fkey"
-            columns: ["variant_size_id"]
-            isOneToOne: false
-            referencedRelation: "variant_sizes"
             referencedColumns: ["id"]
           },
         ]
@@ -273,73 +274,32 @@ export type Database = {
           },
         ]
       }
-      product_size_guides: {
-        Row: {
-          cintura: number | null
-          created_at: string
-          id: string
-          peito: number | null
-          pesoco: number | null
-          product_id: string
-          quadril: number | null
-          tamanho_etiqueta: string
-        }
-        Insert: {
-          cintura?: number | null
-          created_at?: string
-          id?: string
-          peito?: number | null
-          pesoco?: number | null
-          product_id: string
-          quadril?: number | null
-          tamanho_etiqueta: string
-        }
-        Update: {
-          cintura?: number | null
-          created_at?: string
-          id?: string
-          peito?: number | null
-          pesoco?: number | null
-          product_id?: string
-          quadril?: number | null
-          tamanho_etiqueta?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "product_size_guides_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       product_variants: {
         Row: {
-          cor: string
           created_at: string
           id: string
           imagens: Json | null
           is_principal: boolean | null
-          padrao_tecido: string | null
+          material: string | null
+          name: string
           product_id: string
         }
         Insert: {
-          cor: string
           created_at?: string
           id?: string
           imagens?: Json | null
           is_principal?: boolean | null
-          padrao_tecido?: string | null
+          material?: string | null
+          name: string
           product_id: string
         }
         Update: {
-          cor?: string
           created_at?: string
           id?: string
           imagens?: Json | null
           is_principal?: boolean | null
-          padrao_tecido?: string | null
+          material?: string | null
+          name?: string
           product_id?: string
         }
         Relationships: [
@@ -355,20 +315,15 @@ export type Database = {
       products: {
         Row: {
           ativo: boolean
-          categoria: string
-          condicao: string | null
           created_at: string
           descricao: string
           destaque: boolean
-          estoque: number
           garantia_dias: number | null
           garantia_tipo: string | null
           height: number | null
           id: string
           imagem_url: string
           length: number | null
-          marca: string | null
-          modelo: string | null
           nome: string
           permite_retirada: boolean | null
           preco: number
@@ -379,20 +334,15 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
-          categoria: string
-          condicao?: string | null
           created_at?: string
           descricao: string
           destaque?: boolean
-          estoque?: number
           garantia_dias?: number | null
           garantia_tipo?: string | null
           height?: number | null
           id?: string
           imagem_url: string
           length?: number | null
-          marca?: string | null
-          modelo?: string | null
           nome: string
           permite_retirada?: boolean | null
           preco: number
@@ -403,20 +353,15 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
-          categoria?: string
-          condicao?: string | null
           created_at?: string
           descricao?: string
           destaque?: boolean
-          estoque?: number
           garantia_dias?: number | null
           garantia_tipo?: string | null
           height?: number | null
           id?: string
           imagem_url?: string
           length?: number | null
-          marca?: string | null
-          modelo?: string | null
           nome?: string
           permite_retirada?: boolean | null
           preco?: number
@@ -574,63 +519,22 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: string
           user_id?: string
         }
         Relationships: []
-      }
-      variant_sizes: {
-        Row: {
-          codigo_universal: string | null
-          created_at: string
-          estoque: number
-          id: string
-          preco: number | null
-          sku: string | null
-          tamanho: string
-          variant_id: string
-        }
-        Insert: {
-          codigo_universal?: string | null
-          created_at?: string
-          estoque?: number
-          id?: string
-          preco?: number | null
-          sku?: string | null
-          tamanho: string
-          variant_id: string
-        }
-        Update: {
-          codigo_universal?: string | null
-          created_at?: string
-          estoque?: number
-          id?: string
-          preco?: number | null
-          sku?: string | null
-          tamanho?: string
-          variant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "variant_sizes_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {
@@ -786,6 +690,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "user"],
