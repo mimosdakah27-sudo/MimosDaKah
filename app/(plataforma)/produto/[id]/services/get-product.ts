@@ -1,3 +1,4 @@
+// --- 1. services/get-product.ts ---
 import { unstable_cache } from "next/cache";
 import { supabasePublic } from "@/lib/supabase/public";
 import { ProductDatabase, ProductImagesDatabase, ProductVariantDatabase } from "../types/product-type";
@@ -46,7 +47,6 @@ export async function getProductVariants(productId: string) {
   return unstable_cache(
     async (): Promise<ProductVariantDatabase[]> => {
       const supabase = supabasePublic;
-      // Removida a relação incorreta "variant_sizes(*)" já que a tabela foi removida do banco
       const { data: variants, error } = await supabase
         .from("product_variants")
         .select("*")

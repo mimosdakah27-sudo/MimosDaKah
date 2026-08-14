@@ -80,9 +80,12 @@ export async function saveProductWithGallery({
 }): Promise<string> {
   let savedProductId = productId;
 
-  // 1. Processamento e Upload das Imagens das Variantes (Etapa 2)
+  const rawVariants = (form.variants as any[]) || [];
+  const isSimpleProduct = rawVariants.length === 1 && (!rawVariants[0].name || rawVariants[0].name.trim() === "");
+
+  // 1. Processamento e Upload seguro de TODAS as imagens do array de variantes/simples
   const processedVariants = await Promise.all(
-    (form.variants as any[] || []).map(async (variant: any) => {
+    rawVariants.map(async (variant: any) => {
       const uploadedImageUrls: string[] = [];
 
       for (const imgItem of variant.imagens) {
@@ -105,24 +108,25 @@ export async function saveProductWithGallery({
     })
   );
 
-  // 2. Determinar qual é a variante principal e extrair a capa
-  const principalVariant = 
-    processedVariants.find((v) => v.is_principal) || processedVariants[0];
+  // 2. Determinar qual é a imagem de capa principal
+  const principalVariant = processedVariants.find((v) => v.is_principal) || processedVariants[0];
   
   const finalCapaUrl = 
     principalVariant && principalVariant.imagens.length > 0 
       ? principalVariant.imagens[0] 
       : form.imagem_url || "";
 
+  // No arquivo admin-service.ts, dentro da função saveProductWithGallery:
   const productPayload = {
     nome: form.nome,
     descricao: form.descricao,
-    preco: typeof form.preco === "number" ? form.preco : parseDigitsToFloat(form.preco as any),
-    preco_promocional: form.preco_promocional !== null && form.preco_promocional !== undefined
+    preco: form.tipo_venda === "orcamento" ? 0 : (typeof form.preco === "number" ? form.preco : parseDigitsToFloat(form.preco as any)),
+    preco_promocional: form.tipo_venda === "orcamento" ? null : (form.preco_promocional !== null && form.preco_promocional !== undefined
       ? typeof form.preco_promocional === "number"
         ? form.preco_promocional
         : parseDigitsToFloat(String(form.preco_promocional))
-      : null,
+      : null),
+    tipo_venda: form.tipo_venda ?? "normal", // <-- ADICIONADO AQUI
     destaque: form.destaque ?? false,
     ativo: form.ativo ?? true,
     imagem_url: finalCapaUrl,
@@ -135,6 +139,7 @@ export async function saveProductWithGallery({
     garantia_dias: form.garantia_dias ? Number(form.garantia_dias) : 0,
   };
 
+  // 3. Salvar ou Atualizar o Produto principal na tabela `products`
   if (savedProductId) {
     const { error: updateErr } = await supabase
       .from("products")
@@ -161,23 +166,7 @@ export async function saveProductWithGallery({
 
   if (!savedProductId) throw new Error("ID do produto não retornado.");
 
-  // 4. Imagens Extras do Produto
-  const pendingExtraFiles = localExtraImages.filter((img) => img.isNewLocal && img.file);
-  if (pendingExtraFiles.length > 0) {
-    await Promise.all(
-      pendingExtraFiles.map(async (item) => {
-        if (item.file) {
-          const publicUrl = await uploadStorageFile(item.file);
-          await supabase.from("product_images").insert({
-            product_id: savedProductId,
-            url: publicUrl,
-          });
-        }
-      })
-    );
-  }
-
-  // 5. LIMPEZA TOTAL E SEGURA DAS VARIANTES ANTIGAS
+  // 4. Limpeza prévia de registros antigos (variantes e imagens) para evitar duplicações
   const { data: oldVariants } = await supabase
     .from("product_variants")
     .select("id")
@@ -188,20 +177,39 @@ export async function saveProductWithGallery({
     await supabase.from("product_variants").delete().in("id", oldVariantIds);
   }
 
-  // 6. Insere as novas variantes compatíveis com a tabela `product_variants`
-  if (processedVariants.length > 0) {
-    for (const variant of processedVariants) {
-      const { error: varErr } = await supabase
-        .from("product_variants")
-        .insert({
-          product_id: savedProductId,
-          nome: variant.nome,
-          material: variant.material || null,
-          is_principal: variant.is_principal,
-          imagens: variant.imagens,
-        });
+  // Limpa as imagens extras anteriores para recriá-las limpas e ordenadas
+  await supabase.from("product_images").delete().eq("product_id", savedProductId);
 
-      if (varErr) throw varErr;
+  // 5. Tratamento condicional: Produto Simples x Produto com Variações
+  if (isSimpleProduct) {
+    const simpleImages = processedVariants[0]?.imagens || [];
+    
+    // Insere todas as imagens da galeria na tabela `product_images` com posições sequenciais corretas
+    if (simpleImages.length > 0) {
+      for (let i = 0; i < simpleImages.length; i++) {
+        await supabase.from("product_images").insert({
+          product_id: savedProductId,
+          url: simpleImages[i],
+          position: i + 1,
+        });
+      }
+    }
+  } else {
+    // Se for com variações, insere normalmente na tabela `product_variants`
+    if (processedVariants.length > 0) {
+      for (const variant of processedVariants) {
+        const { error: varErr } = await supabase
+          .from("product_variants")
+          .insert({
+            product_id: savedProductId,
+            name: variant.name,
+            material: variant.material || null,
+            is_principal: variant.is_principal,
+            imagens: variant.imagens,
+          });
+
+        if (varErr) throw varErr;
+      }
     }
   }
 

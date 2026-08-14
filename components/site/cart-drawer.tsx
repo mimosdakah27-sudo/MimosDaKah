@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, Trash2, X } from "lucide-react";
+import { Minus, Plus, Trash2, X, MessageCircle, HelpCircle } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/store/cart";
@@ -65,10 +65,11 @@ export function CartDrawer() {
                   const promoPrice = item.product.preco_promocional ? Number(item.product.preco_promocional) : 0;
                   const hasDiscount = promoPrice > 0 && promoPrice < regularPrice;
                   const finalItemPrice = hasDiscount ? promoPrice : regularPrice;
+                  const tipoVenda = item.product.tipo_venda;
 
                   return (
                     <div
-                      key={`${item.product.id}-${item.product.variant_size_id}`}
+                      key={`${item.product.id}-${item.product.variant_id}`}
                       className="flex gap-3 p-3 rounded-xl border bg-card"
                     >
                       <div className="relative h-20 w-16 rounded-lg overflow-hidden bg-muted shrink-0">
@@ -76,15 +77,28 @@ export function CartDrawer() {
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-between">
                         <div>
-                          <h3 className="font-semibold text-sm truncate">{item.product.nome}</h3>
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="font-semibold text-sm truncate">{item.product.nome}</h3>
+                          </div>
+
+                          {tipoVenda === "whatsapp_finalizacao" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded mt-0.5">
+                              <MessageCircle className="h-3 w-3" /> Finalização via WhatsApp
+                            </span>
+                          )}
+                          {tipoVenda === "orcamento" && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded mt-0.5">
+                              <HelpCircle className="h-3 w-3" /> Sob Orçamento
+                            </span>
+                          )}
                           
                           {(item.product.name || item.product.tamanho) && (
-  <p className="text-xs text-primary font-medium mt-0.5">
-    {item.product.name ? `Variação: ${item.product.name}` : ""}
-    {item.product.name && item.product.tamanho ? ", " : ""}
-    {item.product.tamanho ? `Tamanho: ${item.product.tamanho}` : ""}
-  </p>
-)}
+                            <p className="text-xs text-primary font-medium mt-0.5">
+                              {item.product.name ? `Variação: ${item.product.name}` : ""}
+                              {item.product.name && item.product.tamanho ? ", " : ""}
+                              {item.product.tamanho ? `Tamanho: ${item.product.tamanho}` : ""}
+                            </p>
+                          )}
 
                           <div className="flex items-center gap-1.5 mt-1">
                             {hasDiscount && (
@@ -99,21 +113,21 @@ export function CartDrawer() {
                         <div className="flex items-center justify-between mt-2">
                           <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
                             <button 
-                              onClick={() => updateQty(item.product.id, item.quantity - 1, item.product.variant_size_id)} 
+                              onClick={() => updateQty(item.product.id, item.quantity - 1, item.product.variant_id)} 
                               className="h-6 w-6 rounded hover:bg-background flex items-center justify-center text-foreground"
                             >
                               <Minus className="h-3 w-3" />
                             </button>
                             <span className="w-6 text-center text-xs font-semibold">{item.quantity}</span>
                             <button 
-                              onClick={() => updateQty(item.product.id, item.quantity + 1, item.product.variant_size_id)} 
+                              onClick={() => updateQty(item.product.id, item.quantity + 1, item.product.variant_id)} 
                               className="h-6 w-6 rounded hover:bg-background flex items-center justify-center text-foreground"
                             >
                               <Plus className="h-3 w-3" />
                             </button>
                           </div>
                           <button 
-                            onClick={() => remove(item.product.id, item.product.variant_size_id)} 
+                            onClick={() => remove(item.product.id, item.product.variant_id)} 
                             className="h-7 w-7 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground flex items-center justify-center transition-colors" 
                             aria-label="Remover"
                           >

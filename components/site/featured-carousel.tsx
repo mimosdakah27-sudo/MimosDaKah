@@ -10,7 +10,7 @@ import {
 import { formatBRL } from "@/lib/utils";
 import type { Database } from "@/types/database";
 import { motion } from "framer-motion";
-import { ArrowRight, Tag, Zap } from "lucide-react";
+import { ArrowRight, HelpCircle, MessageCircle, Tag, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import * as React from "react";
@@ -18,6 +18,7 @@ import * as React from "react";
 type ProductRow = Database["public"]["Tables"]["products"]["Row"] & {
   destaque?: boolean;
   preco_promocional?: number | null;
+  tipo_venda?: "normal" | "orcamento" | "whatsapp_finalizacao" | null;
 };
 
 interface FeaturedCarouselProps {
@@ -42,7 +43,12 @@ export function FeaturedCarousel({
       >
         <CarouselContent className="-ml-2 md:-ml-4">
           {products.map((product, index) => {
+            const tipoVenda = product.tipo_venda || "normal";
+            const isOrcamento = tipoVenda === "orcamento";
+            const isWhatsappFinalizacao = tipoVenda === "whatsapp_finalizacao";
+
             const hasDiscount =
+              !isOrcamento &&
               product.preco_promocional !== null &&
               product.preco_promocional !== undefined &&
               product.preco_promocional < product.preco;
@@ -79,7 +85,6 @@ export function FeaturedCarousel({
                     // @ts-ignore
                     fetchPriority={isLcpCandidate ? "high" : "auto"}
                     sizes="(max-width: 768px) 55vw, 40vw"
-                    /* object-cover garante preenchimento total e perfeito do container */
                     className="object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                 </div>
@@ -92,6 +97,18 @@ export function FeaturedCarousel({
                         <span className="bg-amber-500 text-slate-950 font-black text-[9px] md:text-xs px-2 py-0.5 rounded-sm uppercase tracking-wider flex items-center gap-1 shadow-xs">
                           <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 fill-slate-950" aria-hidden="true" />
                           Destaque
+                        </span>
+                      )}
+                      {isOrcamento && (
+                        <span className="bg-blue-600 text-white font-black text-[9px] md:text-xs px-2 py-0.5 rounded-sm flex items-center gap-1 shadow-xs">
+                          <HelpCircle className="w-2.5 h-2.5 md:w-3 md:h-3" aria-hidden="true" />
+                          Sob Orçamento
+                        </span>
+                      )}
+                      {isWhatsappFinalizacao && (
+                        <span className="bg-emerald-500 text-slate-950 font-black text-[9px] md:text-xs px-2 py-0.5 rounded-sm flex items-center gap-1 shadow-xs">
+                          <MessageCircle className="w-2.5 h-2.5 md:w-3 md:h-3" aria-hidden="true" />
+                          Detalhes no Zap
                         </span>
                       )}
                       {hasDiscount && (
@@ -107,16 +124,22 @@ export function FeaturedCarousel({
                     </h3>
 
                     <div className="flex items-center justify-between mt-1 pt-2 border-t border-border/20">
-                      <div className="flex items-baseline gap-2">
-                        {hasDiscount && (
-                          <span className="text-[11px] md:text-sm text-muted-foreground line-through font-semibold">
-                            {formatBRL(product.preco)}
+                      {isOrcamento ? (
+                        <div className="text-xs md:text-sm font-bold text-primary">
+                          Consulte no WhatsApp
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline gap-2">
+                          {hasDiscount && (
+                            <span className="text-[11px] md:text-sm text-muted-foreground line-through font-semibold">
+                              {formatBRL(product.preco)}
+                            </span>
+                          )}
+                          <span className="text-base md:text-2xl font-extrabold text-primary">
+                            {formatBRL(finalPrice)}
                           </span>
-                        )}
-                        <span className="text-base md:text-2xl font-extrabold text-primary">
-                          {formatBRL(finalPrice)}
-                        </span>
-                      </div>
+                        </div>
+                      )}
 
                       {!isAdmin && (
                         <div className="hidden md:flex items-center gap-1 text-xs font-bold text-primary group-hover:translate-x-1 transition-transform">

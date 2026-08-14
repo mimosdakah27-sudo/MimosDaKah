@@ -13,6 +13,7 @@ import type {
 
 import {
   fetchProductVariantsAndGuides,
+  fetchExtraImages,
   saveProductWithGallery,
 } from "../services/admin-service";
 
@@ -28,7 +29,7 @@ export function useAdminProduct(
   const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [sizeGuideState, setSizeGuideState] = useState<any>(null);
 
-  // Define o padrão inicial vazio para novos produtos usando 'name' em vez de 'cor'
+  // Define o padrão inicial vazio para novos produtos usando 'name'
   const defaultVariants = [
     {
       name: "",
@@ -40,18 +41,29 @@ export function useAdminProduct(
 
   const [variantsFormState, setVariantsFormState] = useState(defaultVariants);
 
-  // Busca variantes e guia de tamanhos vinculados em caso de edição
+  // Busca variantes, guia de tamanhos E as imagens extras (para produtos simples) em caso de edição
   const { data: dbRelations } = useQuery({
     queryKey: ["product-admin-relations", product?.id],
-    queryFn: () => fetchProductVariantsAndGuides(product!.id),
+    queryFn: async () => {
+      const [relationsRes, extraImagesRes] = await Promise.all([
+        fetchProductVariantsAndGuides(product!.id),
+        fetchExtraImages(product!.id),
+      ]);
+      return {
+        variants: relationsRes.variants ?? [],
+        sizeGuide: relationsRes.sizeGuide,
+        extraImages: extraImagesRes ?? [],
+      };
+    },
     enabled: isEdit && !!product?.id,
     staleTime: Infinity,
   });
 
-  // Atualiza o estado das variantes e guias via useEffect controlado apenas quando os dados do banco chegam
+  // Atualiza o estado das variantes e imagens de forma inteligente quando os dados do banco chegam
   useEffect(() => {
     if (dbRelations) {
       if (dbRelations.variants && dbRelations.variants.length > 0) {
+        // Se possui variações cadastradas
         const formattedVariants = dbRelations.variants.map((v: any) => ({
           id: v.id,
           name: v.name,
@@ -60,17 +72,34 @@ export function useAdminProduct(
           imagens: Array.isArray(v.imagens) ? v.imagens : [],
         }));
         setVariantsFormState(formattedVariants);
+      } else {
+        // Se for um produto SIMPLES (sem variações), montamos a estrutura com base na tabela `product_images` e capa
+        const extraUrls = dbRelations.extraImages.map((img: any) => img.url);
+        
+        // Garante que a capa principal venha primeiro caso exista e não esteja duplicada
+        const allImages = product?.imagem_url
+          ? [product.imagem_url, ...extraUrls.filter((u: string) => u !== product.imagem_url)]
+          : extraUrls;
+
+        setVariantsFormState([
+          {
+            name: "",
+            material: "",
+            is_principal: true,
+            imagens: allImages.length > 0 ? allImages : (product?.imagem_url ? [product.imagem_url] : []),
+          },
+        ]);
       }
 
       if (dbRelations.sizeGuide) {
         setSizeGuideState(dbRelations.sizeGuide);
       }
     }
-  }, [dbRelations]); // Executa com segurança estritamente quando o dbRelations mudar de undefined para os dados reais
+  }, [dbRelations, product?.imagem_url]);
 
+  // No arquivo useAdminProduct.ts, dentro de initialValues:
   const initialValues: FormDataState = {
     nome: product?.nome ?? "",
-    
     descricao: product?.descricao ?? "",
     preco: product?.preco ?? 0,
     preco_promocional: product?.preco_promocional ?? null,
@@ -82,6 +111,8 @@ export function useAdminProduct(
     width: Number(product?.width) || 0,
     height: Number(product?.height) || 0,
     length: Number(product?.length) || 0,
+
+    tipo_venda: (product as any)?.tipo_venda ?? "normal", // <-- ADICIONADO AQUI
 
     permite_retirada: product?.permite_retirada ?? false,
     garantia_tipo: (product?.garantia_tipo as "vendedor" | "fabrica" | "nenhuma") ?? "vendedor",

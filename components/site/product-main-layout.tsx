@@ -1,3 +1,4 @@
+// --- 4. components/site/product-main-layout.tsx ---
 "use client";
 
 import { ProductPurchaseBox } from "@/components/site/product-purchase-box";
@@ -5,6 +6,7 @@ import { ProductReviews } from "@/components/site/product-reviews";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import { MessageCircle, HelpCircle } from "lucide-react";
 
 export function ProductMainLayout({
   product,
@@ -21,6 +23,10 @@ export function ProductMainLayout({
   );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
+  const tipoVenda = product.tipo_venda || "normal";
+  const isOrcamento = tipoVenda === "orcamento";
+  const isWhatsappFinalizacao = tipoVenda === "whatsapp_finalizacao";
+
   const currentVariant =
     variants.find((v) => v.id === selectedVariantId) || principalVariant;
 
@@ -32,7 +38,6 @@ export function ProductMainLayout({
     return [product.imagem_url].filter(Boolean);
   }, [currentVariant, product.imagem_url]);
 
-  // Características consolidadas das variações usando 'name' em vez de 'cor'
   const nomesDisponiveis = Array.from(
     new Set(variants.map((v: any) => v.name).filter(Boolean)),
   ).join(", ");
@@ -46,6 +51,25 @@ export function ProductMainLayout({
       
       {/* 1. CARROSSEL */}
       <div className="lg:col-span-8 flex flex-col gap-6">
+        {/* Banner de aviso no topo da foto se for finalização no WhatsApp */}
+        {isWhatsappFinalizacao && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-4 py-3 rounded-xl text-xs font-medium flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 shrink-0" />
+            <span>
+              <strong>Aviso importante:</strong> Este produto é personalizado. Após concluir a compra, você será redirecionada para o WhatsApp da loja para acertar todos os detalhes da arte e do produto.
+            </span>
+          </div>
+        )}
+
+        {isOrcamento && (
+          <div className="bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 px-4 py-3 rounded-xl text-xs font-medium flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 shrink-0" />
+            <span>
+              <strong>Produto sob Orçamento:</strong> Devido às muitas variações e opções de personalização, os valores são calculados sob medida através do WhatsApp.
+            </span>
+          </div>
+        )}
+
         <div className="bg-card border border-border/60 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row gap-4">
           
           {/* Miniaturas */}

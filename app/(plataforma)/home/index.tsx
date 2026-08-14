@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/site/product-card";
 import { FeaturedCarousel } from "@/components/site/featured-carousel";
 import { getHomeContent } from "./hooks/use-home-data";
+import { ClearCartTrigger } from "@/components/site/clear-cart-trigger";
 
 export async function HomePage() {
   const { products: rawProducts, featured: rawFeatured, currentYear } = await getHomeContent();

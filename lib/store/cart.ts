@@ -47,7 +47,8 @@ export const useCart = create<CartState>()(
           });
         }
 
-        set({ items: nextItems, open: true });
+        // Removido o 'open: true' daqui para que o carrinho não abra sozinho ao adicionar produtos
+        set({ items: nextItems });
       },
 
       remove: (id, variant_id) =>

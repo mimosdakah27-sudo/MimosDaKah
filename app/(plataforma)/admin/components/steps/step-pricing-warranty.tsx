@@ -8,6 +8,7 @@ import { cn, maskBRL, parseDigitsToFloat, maskOnlyNumbers } from "@/lib/utils";
 export function StepPricingWarranty() {
   const { register, watch, setValue, formState: { errors } } = useFormContext();
   
+  const tipoVenda = watch("tipo_venda") || "normal";
   const garantiaTipo = watch("garantia_tipo");
   const permiteRetirada = watch("permite_retirada");
   const destaque = watch("destaque");
@@ -24,48 +25,90 @@ export function StepPricingWarranty() {
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4 animate-fade-in">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
-        <div className="space-y-1">
-          <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
-            Preço regular (R$)
-          </Label>
-          <Input 
-            placeholder="R$ 0,00" 
-            value={maskBRL(precoRaw)}
-            onChange={(e) => {
-              const numericFloat = parseDigitsToFloat(e.target.value);
-              setValue("preco", numericFloat, { shouldValidate: true });
-            }}
-            className={cn("rounded-lg h-9 sm:h-10 text-xs", errors.preco && "border-destructive")} 
-          />
-          {errors.preco && <span className="text-[10px] text-destructive block">{String(errors.preco.message)}</span>}
-        </div>
-
-        <div className="space-y-1">
-          <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
-            Preço promocional (Opcional)
-          </Label>
-          <div className="relative flex items-center">
-            <Input 
-              placeholder="R$ 0,00" 
-              value={maskBRL(precoPromoRaw)}
-              onChange={(e) => {
-                const numericFloat = parseDigitsToFloat(e.target.value);
-                setValue("preco_promocional", numericFloat > 0 ? numericFloat : null, { shouldValidate: true });
+    <div className="space-y-4 sm:space-y-5 animate-fade-in">
+      {/* SELETOR DE TIPO DE VENDA (EXCLUSIVO) */}
+      <div className="space-y-1.5 p-3 rounded-xl border border-border/60 bg-muted/20">
+        <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-bold tracking-wider">
+          Comportamento de Venda do Produto
+        </Label>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+          {[
+            { id: "normal", label: "Padrão (Preço fixo)", desc: "Compra direta normal" },
+            { id: "orcamento", label: "Sob Orçamento", desc: "Oculta preço e vai pro WhatsApp" },
+            { id: "whatsapp_finalizacao", label: "Finalizar no WhatsApp", desc: "Compra normal com aviso e redirect" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => {
+                setValue("tipo_venda", item.id, { shouldValidate: true });
+                if (item.id === "orcamento") {
+                  setValue("preco", 0);
+                  setValue("preco_promocional", null);
+                }
               }}
-              className={cn("rounded-lg h-9 sm:h-10 text-xs pr-16", errors.preco_promocional && "border-destructive")} 
-            />
-            
-            {descontoPercentual > 0 && (
-              <span className="absolute right-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap">
-                {descontoPercentual}% OFF
-              </span>
-            )}
-          </div>
-          {errors.preco_promocional && <span className="text-[10px] text-destructive block">{String(errors.preco_promocional.message)}</span>}
+              className={cn(
+                "p-2.5 rounded-lg border text-left transition-all",
+                tipoVenda === item.id 
+                  ? "border-primary bg-primary/10 text-foreground shadow-xs ring-1 ring-primary" 
+                  : "border-border/60 bg-card text-muted-foreground hover:border-border"
+              )}
+            >
+              <div className="font-semibold text-xs text-foreground">{item.label}</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{item.desc}</div>
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* BLOCO DE PREÇOS (Oculto se for orçamento) */}
+      {tipoVenda !== "orcamento" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
+          <div className="space-y-1">
+            <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
+              Preço regular (R$)
+            </Label>
+            <Input 
+              placeholder="R$ 0,00" 
+              value={maskBRL(precoRaw)}
+              onChange={(e) => {
+                const numericFloat = parseDigitsToFloat(e.target.value);
+                setValue("preco", numericFloat, { shouldValidate: true });
+              }}
+              className={cn("rounded-lg h-9 sm:h-10 text-xs", errors.preco && "border-destructive")} 
+            />
+            {errors.preco && <span className="text-[10px] text-destructive block">{String(errors.preco.message)}</span>}
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
+              Preço promocional (Opcional)
+            </Label>
+            <div className="relative flex items-center">
+              <Input 
+                placeholder="R$ 0,00" 
+                value={maskBRL(precoPromoRaw)}
+                onChange={(e) => {
+                  const numericFloat = parseDigitsToFloat(e.target.value);
+                  setValue("preco_promocional", numericFloat > 0 ? numericFloat : null, { shouldValidate: true });
+                }}
+                className={cn("rounded-lg h-9 sm:h-10 text-xs pr-16", errors.preco_promocional && "border-destructive")} 
+              />
+              
+              {descontoPercentual > 0 && (
+                <span className="absolute right-2 bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap">
+                  {descontoPercentual}% OFF
+                </span>
+              )}
+            </div>
+            {errors.preco_promocional && <span className="text-[10px] text-destructive block">{String(errors.preco_promocional.message)}</span>}
+          </div>
+        </div>
+      ) : (
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-medium">
+          ℹ️ Este produto está configurado para <strong>Orçamento</strong>. Os campos de preço foram ocultados e substituídos pelo botão de atendimento via WhatsApp.
+        </div>
+      )}
 
       <div className="space-y-2 pt-1 border-t border-border/40">
         <div className="flex items-center space-x-2">

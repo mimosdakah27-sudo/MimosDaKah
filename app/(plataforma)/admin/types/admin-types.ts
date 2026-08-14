@@ -22,10 +22,9 @@ export interface VariantImageState {
   isNew?: boolean;
 }
 
-// State ajustado para inglês (name)
 export interface ProductVariantState {
   id?: string;
-  name: string;
+  name?: string | null;
   material?: string | null;
   is_principal: boolean;
   imagens: (string | VariantImageState)[];
@@ -44,7 +43,7 @@ export const step2Schema = yup.object({
     .of(
       yup.object({
         id: yup.string().optional(),
-        name: yup.string().required("Nome da variação é obrigatório"),
+        name: yup.string().nullable().optional(), // Deixamos opcional/nullable para abranger ambos os modos
         material: yup.string().nullable().optional(),
         is_principal: yup.boolean().required(),
         imagens: yup
@@ -56,7 +55,7 @@ export const step2Schema = yup.object({
               (value) => typeof value === "string" || (typeof value === "object" && value !== null)
             )
           )
-          .min(1, "Adicione ao menos 1 foto para esta variação")
+          .min(1, "Adicione ao menos 1 foto")
           .required("Imagens obrigatórias"),
       })
     )
@@ -116,13 +115,24 @@ export const step4Schema = yup.object({
     .required("Comprimento é obrigatório"),
 });
 
+// Substitua o trecho correspondente no arquivo admin-types.ts
+
 export const step5Schema = yup.object({
+  tipo_venda: yup
+    .string()
+    .oneOf(["normal", "orcamento", "whatsapp_finalizacao"])
+    .default("normal")
+    .required("Tipo de venda obrigatório"),
+
   preco: yup
     .number()
     .transform((value, originalValue) => (originalValue === "" ? 0 : value))
     .typeError("Preço inválido")
-    .min(0, "O preço deve ser maior ou igual a 0")
-    .required("O preço é obrigatório"),
+    .when("tipo_venda", {
+      is: (val: string) => val === "orcamento",
+      then: (schema) => schema.min(0).nullable().optional().default(0),
+      otherwise: (schema) => schema.min(0.01, "O preço deve ser maior que 0").required("O preço é obrigatório"),
+    }),
 
   preco_promocional: yup
     .number()

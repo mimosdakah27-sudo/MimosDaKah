@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     // Mapeamento de status
     const statusMapping: Record<string, string> = {
-      "order.created": "Em Preparação",
+      "order.created": "Aguarde",
       "order.pending": "Pendente (Carrinho)",
       "order.paid": "Etiqueta Paga",
       "order.ready-to-print": "Pronto para Envio",

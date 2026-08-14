@@ -3,13 +3,102 @@
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/utils";
 import { useProfile } from "./hooks/use-profile";
+import { useStore } from "@/hooks/use-store";
+import { useAuth } from "@/hooks/use-auth";
 import { BackButton } from "@/components/site/back-button";
-import { Truck, MapPin, CalendarDays, ReceiptText, ExternalLink } from "lucide-react";
+import { Truck, MapPin, CalendarDays, ReceiptText, ExternalLink, MessageCircle } from "lucide-react";
 
 export default function ProfilePage() {
   const { user, orders } = useProfile();
+  const { config } = useStore();
+  const { profile } = useAuth();
+
+  // Função para abrir o WhatsApp com mensagem automática do pedido
+  const handleWhatsAppSupport = (order: any) => {
+    const phone = config?.phone || "";
+    const cleanPhone = phone.replace(/\D/g, "");
+    
+    if (!cleanPhone) {
+      alert("O WhatsApp da loja não está configurado.");
+      return;
+    }
+
+    const userName = profile?.display_name || user?.email || "Cliente";
+    const orderIdShort = order.id.substring(0, 8);
+
+    const message = `Olá! Gostaria de tirar uma dúvida sobre o meu pedido #${orderIdShort}.
+*Cliente:* ${userName}
+*Status atual:* ${order.status}
+
+Poderia me ajudar?`;
+
+    const url = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+  };
+
+  // Função auxiliar ajustada exatamente às regras de texto solicitadas
+  const getLogisticsMessage = (order: any) => {
+    const status = order.status;
+
+    if (order.shipping_type === 'retirada') {
+      switch (status) {
+        case "Em Preparação":
+          return "Seu produto está sendo preparado.";
+        case "pronto_para_retirada":
+          return "Seu produto está pronto para retirada";
+        case "Preparando Entrega":
+          return "Estamos organizando os últimos detalhes para a retirada.";
+        case "Etiqueta Paga":
+          return "Pagamento confirmado. Aguardando separação.";
+        case "Postado":
+          return "Pedido separado para retirada.";
+        case "Entregue":
+          return "Seu produto foi entregue com sucesso";
+        default:
+          return "Aguardando atualizações do status.";
+      }
+    }
+
+    if (order.shipping_type === 'entrega_propria') {
+      switch (status) {
+        case "Em Preparação":
+          return "Seu produto está sendo preparado.";
+        case "pronto_para_retirada":
+          return "Pedido pronto.";
+        case "Preparando Entrega":
+          return "Seu produto está sendo preparado e logo sairá para entrega.";
+        case "Etiqueta Paga":
+          return "Pagamento confirmado.";
+        case "Postado":
+          return "Pedido a caminho com o entregador.";
+        case "Entregue":
+          return "Seu produto foi entregue com sucesso";
+        default:
+          return "Seu produto está sendo preparado.";
+      }
+    }
+
+    // Caso seja transportadora / melhor_envio
+    switch (status) {
+      case "Em Preparação":
+        return "Seu produto está sendo preparado.";
+      case "Preparando Entrega":
+        return "Preparando pacote para envio.";
+      case "pronto_para_retirada":
+        return "Seu produto está pronto para retirada.";
+      case "Etiqueta Paga":
+        return "Etiqueta gerada, aguardando postagem.";
+      case "Postado":
+        return "Seu pedido foi postado na transportadora.";
+      case "Entregue":
+        return "Seu produto foi entregue com sucesso";
+      default:
+        return "Acompanhe o rastreio do seu envio abaixo.";
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-8">
@@ -60,7 +149,6 @@ export default function ProfilePage() {
                         <div className="flex-1 min-w-0 text-xs space-y-1">
                           <p className="font-semibold text-foreground truncate">{it.product_name}</p>
                           
-                          {/* Exibição alinhada ao DB: name e tamanho */}
                           {(it.name || it.tamanho) && (
                             <p className="text-primary font-medium">
                               {it.name ? `Variante: ${it.name}` : ""}
@@ -113,15 +201,25 @@ export default function ProfilePage() {
                               Rastrear: {order.tracking_code} <ExternalLink className="h-3 w-3" />
                             </a>
                           ) : (
-                            <p className="font-semibold text-amber-600">Aguardando código de rastreio</p>
+                            <p className="font-semibold text-amber-600">Esperando código de rastreio</p>
                           )
                         ) : (
-                          <p className="font-semibold text-primary">
-                            {order.shipping_type === 'retirada' 
-                              ? "Pode buscar seu pedido na loja!" 
-                              : "Nossa equipe está separando seu pedido para entrega."}
+                          <p className={`font-semibold ${order.status === 'Pronto p/ Retirada' ? 'text-emerald-600 dark:text-emerald-400 text-sm font-bold' : 'text-primary'}`}>
+                            {getLogisticsMessage(order)}
                           </p>
                         )}
+
+                        {/* Botão para suporte / tirar dúvidas via WhatsApp sobre o pedido */}
+                        <div className="pt-2">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleWhatsAppSupport(order)}
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                            Falar sobre este pedido no WhatsApp
+                          </Button>
+                        </div>
                       </div>
                     </div>
 

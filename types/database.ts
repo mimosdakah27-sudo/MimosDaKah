@@ -328,6 +328,7 @@ export type Database = {
           permite_retirada: boolean | null
           preco: number
           preco_promocional: number | null
+          tipo_venda: "normal" | "orcamento" | "whatsapp_finalizacao" | null
           updated_at: string | null
           weight: number | null
           width: number | null
@@ -347,6 +348,7 @@ export type Database = {
           permite_retirada?: boolean | null
           preco: number
           preco_promocional?: number | null
+          tipo_venda?: string
           updated_at?: string | null
           weight?: number | null
           width?: number | null
@@ -366,6 +368,7 @@ export type Database = {
           permite_retirada?: boolean | null
           preco?: number
           preco_promocional?: number | null
+          tipo_venda?: string
           updated_at?: string | null
           weight?: number | null
           width?: number | null

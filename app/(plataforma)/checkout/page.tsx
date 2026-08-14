@@ -206,6 +206,7 @@ export default function CheckoutPage() {
                         </Link>
                       }
                       className="rounded-md px-6"
+                      nativeButton={false}
                     ></Button>
                   </CardContent>
                 </Card>
@@ -309,6 +310,7 @@ export default function CheckoutPage() {
                                 <Link href="/endereco">Revisar endereço</Link>
                               )}
                               className="w-full"
+                              nativeButton={false}
                             ></Button>
                           </CardContent>
                         </Card>

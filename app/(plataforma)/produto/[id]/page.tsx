@@ -1,3 +1,4 @@
+// --- 3. app/product/[id]/page.tsx ---
 import { BackButton } from "@/components/site/back-button";
 import { ProductMainLayout } from "@/components/site/product-main-layout";
 import { notFound } from "next/navigation";
