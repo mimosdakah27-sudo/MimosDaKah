@@ -93,7 +93,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={cn("dark", "scroll-smooth", "font-sans", outfit.variable, publicSansHeading.variable)}>
+    <html lang="pt-BR" className={cn("system", "scroll-smooth", "font-sans", outfit.variable, publicSansHeading.variable)}>
       <head>
         {/* Otimização de LCP: Conecta antecipadamente ao Supabase para carregar imagens e dados mais rápido */}
         <link rel="preconnect" href="https://trmbmnjpylozykcyxcuc.supabase.co" />
