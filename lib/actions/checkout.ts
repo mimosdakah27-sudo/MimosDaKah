@@ -6,16 +6,20 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export async function createCheckoutSession(payload: any) {
   console.log("Dados recebidos no Checkout:", JSON.stringify(payload, null, 2));
 
-  // 1. Identificação precisa do tipo de entrega
+  const isQuote = Boolean(payload.isQuote);
+
+  // Identificação do tipo de entrega
   const isPickup = payload.shipping.id === "pickup";
   const isLocalDelivery = payload.shipping.id === "local";
   const isBetterShipping = !isPickup && !isLocalDelivery;
 
-  let shippingType = "melhor_envio";
-  if (isPickup) {
-    shippingType = "retirada";
-  } else if (isLocalDelivery) {
-    shippingType = "entrega_propria";
+  let shippingType = isQuote ? "orcamento" : "melhor_envio";
+  if (!isQuote) {
+    if (isPickup) {
+      shippingType = "retirada";
+    } else if (isLocalDelivery) {
+      shippingType = "entrega_propria";
+    }
   }
 
   const getEffectivePrice = (product: any) => {
@@ -35,36 +39,36 @@ export async function createCheckoutSession(payload: any) {
     isPickup || isLocalDelivery
       ? payload.items.reduce(
           (acc: number, i: any) => acc + Number(i.product.weight || 0),
-          0,
+          0
         )
-      : payload.shipping.packages.reduce(
+      : payload.shipping.packages?.reduce(
           (acc: number, p: any) => acc + Number(p.weight || 0),
-          0,
-        );
+          0
+        ) || 0;
 
   const days =
     isPickup || isLocalDelivery
       ? 1
       : Number(payload.shipping.delivery_time) || 0;
   const calculatedDeliveryDate = new Date(
-    Date.now() + days * 24 * 60 * 60 * 1000,
+    Date.now() + days * 24 * 60 * 60 * 1000
   );
 
   const shippingName = isBetterShipping
-    ? payload.shipping.company.name
+    ? payload.shipping.company?.name || payload.shipping.name
     : payload.shipping.name;
 
   const evaluatedCompanyName = isBetterShipping
     ? payload.shipping.company?.name || ""
     : payload.shipping.name;
 
-  // 3. ATUALIZAR PEDIDO EXISTENTE OU CRIAR UM NOVO
   let orderId = payload.orderId;
 
   const orderPayload = {
     user_id: payload.user.id || null,
     total: Number(total),
-    status: "aguarde",
+    // Se for orçamento, mantém "Aguardando Pagamento" para não disparar a trigger do Supabase
+    status: isQuote ? "Aguardando Pagamento" : "aguarde",
     shipping_type: shippingType,
     tracking_code:
       isPickup || isLocalDelivery
@@ -83,11 +87,11 @@ export async function createCheckoutSession(payload: any) {
     shipping_company_name: evaluatedCompanyName,
     total_weight: Number(calculatedWeight),
     estimated_delivery: calculatedDeliveryDate.toISOString(),
-    payment_status: "Pendente",
+    payment_status: "pending",
   };
 
   if (orderId) {
-    // Se o pedido já existe (orçamento sendo pago)
+    // Atualização do orçamento com frete e dados do cliente
     const { error: updateError } = await supabaseAdmin
       .from("orders")
       .update(orderPayload)
@@ -98,11 +102,10 @@ export async function createCheckoutSession(payload: any) {
       throw new Error("Erro ao atualizar pedido para checkout.");
     }
 
-    // Limpa os itens antigos para re-inserir atualizados
     await supabaseAdmin.from("order_items").delete().eq("order_id", orderId);
-    console.log(`[CHECKOUT] Pedido existente ${orderId} reaproveitado.`);
+    console.log(`[CHECKOUT] Pedido de orçamento ${orderId} atualizado sem alterar status.`);
   } else {
-    // Se for uma compra do zero
+    // Criação de pedido do zero
     const { data: newOrder, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert(orderPayload)
@@ -115,10 +118,10 @@ export async function createCheckoutSession(payload: any) {
     }
 
     orderId = newOrder.id;
-    console.log(`[CHECKOUT] Pedido prévio criado com ID: ${orderId}`);
+    console.log(`[CHECKOUT] Pedido novo criado com ID: ${orderId}`);
   }
 
-  // 4. Inserir os itens correspondentes em order_items
+  // Inserção dos itens
   const itemsToInsert = payload.items.map((i: any) => {
     const rawVariantId = i.product.variant_id || i.product.v || null;
     const cleanVariantId = (rawVariantId && rawVariantId !== "default") ? rawVariantId : null;
@@ -127,7 +130,7 @@ export async function createCheckoutSession(payload: any) {
       order_id: orderId,
       product_id: i.product.id,
       product_name: i.product.nome,
-      product_image: i.product.imagem_url,
+      product_image: i.product.imagem_url || "",
       unit_price: getEffectivePrice(i.product),
       quantity: i.quantity,
       item_weight: Number(i.product.weight) || 0,
@@ -145,11 +148,11 @@ export async function createCheckoutSession(payload: any) {
     .insert(itemsToInsert);
 
   if (itemsError) {
-    console.error("Erro ao salvar itens prévios do pedido:", itemsError);
+    console.error("Erro ao salvar itens do pedido:", itemsError);
     throw new Error("Erro ao salvar itens do pedido.");
   }
 
-  // 5. Metadados e Stripe Session
+  // Metadados do Stripe
   const minimalItemsData = payload.items.map((i: any) => {
     const rawVariantId = i.product.variant_id || i.product.v || null;
     const cleanVariantId = (rawVariantId && rawVariantId !== "default") ? rawVariantId : null;
@@ -169,7 +172,7 @@ export async function createCheckoutSession(payload: any) {
     orderId: orderId,
     userId: payload.user.id || "",
     total: total.toString(),
-    status: "aguarde",
+    status: isQuote ? "Aguardando Pagamento" : "aguarde",
     shippingType: shippingType,
     calculatedWeight: calculatedWeight.toString(),
     calculatedDeliveryDate: calculatedDeliveryDate.toISOString(),
@@ -202,7 +205,7 @@ export async function createCheckoutSession(payload: any) {
             currency: "brl",
             product_data: {
               name: item.product.nome,
-              images: [item.product.imagem_url],
+              images: item.product.imagem_url ? [item.product.imagem_url] : [],
             },
             unit_amount: Math.round(effectivePrice * 100),
           },
@@ -221,10 +224,10 @@ export async function createCheckoutSession(payload: any) {
     metadata,
     mode: "payment",
     success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/sucesso?order_id=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout`,
+    cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?order_id=${orderId}`,
   });
 
-  console.log("Sessão Stripe criada com sucesso ID:", session.id, "para o pedido:", orderId);
+  console.log("Sessão Stripe criada com sucesso. ID:", session.id, "Pedido:", orderId);
 
   return { url: session.url };
 }

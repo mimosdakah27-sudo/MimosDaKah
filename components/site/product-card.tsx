@@ -1,8 +1,9 @@
 "use client";
 
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
 import { formatBRL, cn } from "@/lib/utils";
 import type { Database } from "@/types/database";
@@ -27,6 +28,8 @@ export function ProductCard({
   isAdmin = false,
   actions,
 }: ProductCardProps) {
+  const [isNavigating, setIsNavigating] = useState(false);
+
   const isAtivo = product.ativo !== false;
   const tipoVenda = product.tipo_venda || "normal";
   const isOrcamento = tipoVenda === "orcamento";
@@ -49,14 +52,32 @@ export function ProductCard({
 
   return (
     <div className={cn(
-      "group flex flex-col rounded-md md:rounded-xl overflow-hidden bg-card border border-border/60 shadow-xs transition-all hover:shadow-md hover:border-border relative h-full justify-between",
+      "group flex flex-col rounded-md md:rounded-xl overflow-hidden bg-card border border-border/60 shadow-xs transition-all hover:shadow-md hover:border-border relative h-full justify-between cursor-pointer",
       isAdmin && !isAtivo && "opacity-75 grayscale"
     )}>
+
+      {/* Overlay de carregamento ao clicar */}
+      {isNavigating && (
+        <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-40 flex items-center justify-center transition-all">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Link invisível que cobre 100% do card */}
+      {(isAtivo || !isAdmin) && (
+        <Link 
+          href={`/produto/${product.id}`} 
+          prefetch={true}
+          onClick={() => setIsNavigating(true)}
+          className="absolute inset-0 z-10" 
+          aria-label={`Ver detalhes do produto: ${product.nome}`} 
+        />
+      )}
       
-      {/* Container fixo e estritamente quadrado (aspect-square) em todas as telas */}
+      {/* Container fixo da imagem */}
       <div className="relative aspect-square w-full overflow-hidden bg-muted/20">
         {isOrcamento && (
-          <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start">
+          <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start pointer-events-none">
             <span className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs backdrop-blur-xs">
               <HelpCircle className="h-2.5 w-2.5" /> Sob Orçamento
             </span>
@@ -73,7 +94,7 @@ export function ProductCard({
       </div>
 
       {/* Conteúdo do Card */}
-      <div className="p-2.5 flex flex-col flex-grow gap-1.5 relative z-20 justify-between">
+      <div className="p-2.5 flex flex-col flex-grow gap-1.5 justify-between pointer-events-none">
         <div className="space-y-0.5">
           <h3 className="text-xs font-medium text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
             {product.nome}
@@ -116,24 +137,17 @@ export function ProductCard({
 
         <div className="pt-2 border-t border-border/40 mt-auto">
           <span className="text-[10px] text-muted-foreground font-medium block">
-            {isOrcamento ? "Atendimento personalizado" : "Frete calculated no checkout"}
+            {isOrcamento ? "Atendimento personalizado" : "Frete calculado no checkout"}
           </span>
         </div>
 
+        {/* Ações de admin recebem eventos de ponteiro para funcionarem acima do Link do card */}
         {isAdmin && actions && (
-          <div className="mt-2 pt-2 border-t border-border flex gap-1 relative z-30">
+          <div className="mt-2 pt-2 border-t border-border flex gap-1 relative z-30 pointer-events-auto">
             {actions}
           </div>
         )}
       </div>
-
-      {(isAtivo || !isAdmin) && (
-        <Link 
-          href={`/produto/${product.id}`} 
-          className="absolute inset-0 z-10" 
-          aria-label={`Ver detalhes do produto: ${product.nome}`} 
-        />
-      )}
     </div>
   );
 }

@@ -33,7 +33,8 @@ export async function fetchQuoteOptions(): Promise<{
 }
 
 /**
- * Cria o Pedido de Orçamento, o Item relacionado e gera a Notificação para o cliente.
+ * Cria o Pedido de Orçamento e o Item relacionado.
+ * A notificação ao cliente é gerada automaticamente via Trigger no Supabase ao inserir a ordem.
  */
 export async function createQuoteOrderService(payload: CreateQuotePayload): Promise<string> {
   const {
@@ -55,7 +56,7 @@ export async function createQuoteOrderService(payload: CreateQuotePayload): Prom
 
   const totalOrder = price * (quantity || 1);
 
-  // 1. Inserir a Ordem com identificador de tipo 'orcamento'
+  // 1. Inserir a Ordem (dispara a trigger trg_notify_order_status no Supabase)
   const { data: order, error: orderErr } = await supabase
     .from("orders")
     .insert({
@@ -63,7 +64,7 @@ export async function createQuoteOrderService(payload: CreateQuotePayload): Prom
       total: totalOrder,
       status: "Aguardando Pagamento",
       payment_status: "pending",
-      order_type: "orcamento", // <--- IDENTIFICADOR DE TIPO DO PEDIDO
+      shipping_type: "orcamento",
       shipping_name: customerName || "Cliente",
       shipping_address: observation ? `Observação: ${observation}` : "A definir no checkout",
       shipping_city: "A definir",
@@ -76,14 +77,14 @@ export async function createQuoteOrderService(payload: CreateQuotePayload): Prom
 
   if (orderErr) throw orderErr;
 
-  // 2. Inserir o item do pedido com a quantidade informada
+  // 2. Inserir o item do pedido
   const { error: itemErr } = await supabase.from("order_items").insert({
     order_id: order.id,
     product_id: productId,
     product_name: productName,
-    product_image: productImage || null,
+    product_image: productImage || "", // Fallback para manter compatibilidade com NOT NULL
     unit_price: price,
-    quantity: quantity || 1, // <--- QUANTIDADE PERSONALIZADA
+    quantity: quantity || 1,
     item_weight: weight || 0,
     item_width: width || 0,
     item_height: height || 0,
@@ -91,21 +92,6 @@ export async function createQuoteOrderService(payload: CreateQuotePayload): Prom
   });
 
   if (itemErr) throw itemErr;
-
-  // 3. Gerar a notificação para o usuário
-  const formattedTotal = new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(totalOrder);
-
-  const { error: notifErr } = await supabase.from("notifications").insert({
-    user_id: customerId,
-    title: "Novo Orçamento Disponível! 🏷️",
-    message: `Seu orçamento para "${productName}" (${quantity}x) no valor de ${formattedTotal} está pronto. Clique para finalizar!`,
-    link: `/perfil?order=${order.id.slice(0, 8)}`,
-  });
-
-  if (notifErr) throw notifErr;
 
   return order.id;
 }

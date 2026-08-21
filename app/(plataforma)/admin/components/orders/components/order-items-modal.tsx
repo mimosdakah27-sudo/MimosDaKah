@@ -11,6 +11,7 @@ export function OrderItemsModal({ order, isModalOpen, setIsModalOpen }: any) {
       <DialogTrigger
         render={
           <Button
+          nativeButton={true}
             variant="outline"
             size="sm"
             className="w-full h-8 text-xs flex items-center justify-between gap-2"

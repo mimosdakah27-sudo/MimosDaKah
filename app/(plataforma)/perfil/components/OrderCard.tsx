@@ -1,4 +1,3 @@
-// components/profile/order-card.tsx
 import {
   CalendarDays,
   CreditCard,
@@ -29,14 +28,21 @@ export function OrderCard({
   onCheckout,
   onWhatsAppSupport,
 }: OrderCardProps) {
+  // Verifica se o pedido é do tipo 'orcamento' pelo shipping_type
+  const isQuote = order.shipping_type === "orcamento";
+
   const isPendingPayment =
     order.payment_status === "pending" ||
     order.status === "Aguardando Pagamento";
 
   const getLogisticsMessage = (status: string, shippingType: string) => {
+    if (shippingType === "orcamento") {
+      return "Orçamento pronto! Finalize o pagamento para definir os detalhes de envio.";
+    }
+
     if (shippingType === "retirada") {
       switch (status) {
-        case "Aguardando Pagamento": return "Orçamento pronto! Finalize o pagamento abaixo.";
+        case "Aguardando Pagamento": return "Aguardando confirmação do pagamento.";
         case "Em Preparação": return "Seu produto está sendo preparado.";
         case "pronto_para_retirada": return "Seu produto está pronto para retirada";
         case "Preparando Entrega": return "Estamos organizando os últimos detalhes para a retirada.";
@@ -49,7 +55,7 @@ export function OrderCard({
 
     if (shippingType === "entrega_propria") {
       switch (status) {
-        case "Aguardando Pagamento": return "Orçamento pronto! Finalize o pagamento abaixo.";
+        case "Aguardando Pagamento": return "Aguardando confirmação do pagamento.";
         case "Em Preparação": return "Seu produto está sendo preparado.";
         case "pronto_para_retirada": return "Pedido pronto.";
         case "Preparando Entrega": return "Seu produto está sendo preparado e logo sairá para entrega.";
@@ -61,7 +67,7 @@ export function OrderCard({
     }
 
     switch (status) {
-      case "Aguardando Pagamento": return "Orçamento pronto! Finalize o pagamento abaixo.";
+      case "Aguardando Pagamento": return "Aguardando confirmação do pagamento.";
       case "Em Preparação": return "Seu produto está sendo preparado.";
       case "Preparando Entrega": return "Preparando pacote para envio.";
       case "pronto_para_retirada": return "Seu produto está pronto para retirada.";
@@ -91,9 +97,9 @@ export function OrderCard({
               <CardTitle className="text-lg">
                 Pedido #{order.id.slice(0, 8)}
               </CardTitle>
-              {isPendingPayment && (
+              {isQuote && (
                 <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5">
-                  🏷️ Orçamento Pronto
+                  🏷️ Orçamento
                 </Badge>
               )}
             </div>
@@ -121,14 +127,14 @@ export function OrderCard({
             <HelpCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="space-y-0.5 text-xs">
               <p className="font-bold text-amber-700 dark:text-amber-400">
-                Orçamento pronto para pagamento!
+                {isQuote
+                  ? "Orçamento pronto para pagamento!"
+                  : "Aguardando confirmação do pagamento"}
               </p>
               <p className="text-muted-foreground">
-                O valor deste produto/serviço foi definido pela loja. Clique em{" "}
-                <span className="font-semibold text-foreground">
-                  "Pagar e Finalizar Pedido"
-                </span>{" "}
-                para ir ao checkout e concluir sua compra.
+                {isQuote
+                  ? 'O valor deste produto/serviço foi definido pela loja. Clique em "Pagar e Finalizar Pedido" para ir ao checkout e concluir sua compra.'
+                  : "Clique abaixo para prosseguir com o pagamento e finalizar seu pedido."}
               </p>
             </div>
           </div>
@@ -138,7 +144,7 @@ export function OrderCard({
           <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
             Produtos
           </h4>
-          {order.order_items.map((item: any) => (
+          {order.order_items?.map((item: any) => (
             <OrderProductItem key={item.id} item={item} />
           ))}
         </div>
@@ -155,12 +161,14 @@ export function OrderCard({
                   ? "Retirada na Loja"
                   : order.shipping_type === "entrega_propria"
                     ? "Entrega Própria da Loja"
-                    : "Envio por Transportadora"}
+                    : order.shipping_type === "orcamento"
+                      ? "A definir no Checkout (Orçamento)"
+                      : "Envio por Transportadora"}
               </p>
 
               {order.shipping_type !== "retirada" && (
                 <p className="flex items-start gap-2">
-                  <MapPin className="h-3.5 w-3.5 mt-0.5" />
+                  <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                   {order.shipping_address}, {order.shipping_city}
                 </p>
               )}
@@ -200,7 +208,7 @@ export function OrderCard({
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs h-8"
                 >
                   <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-                  {isPendingPayment
+                  {isQuote
                     ? "Falar sobre este orçamento no WhatsApp"
                     : "Falar sobre este pedido no WhatsApp"}
                 </Button>
@@ -225,7 +233,11 @@ export function OrderCard({
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Frete</span>
-                  <span>{formatBRL(Number(order.shipping_cost || 0))}</span>
+                  <span>
+                    {order.shipping_cost
+                      ? formatBRL(Number(order.shipping_cost))
+                      : "A calcular"}
+                  </span>
                 </div>
                 <div className="flex justify-between text-base font-bold text-foreground pt-2 border-t">
                   <span>Total</span>

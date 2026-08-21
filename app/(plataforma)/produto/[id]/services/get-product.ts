@@ -1,63 +1,31 @@
-// --- 1. services/get-product.ts ---
 import { unstable_cache } from "next/cache";
 import { supabasePublic } from "@/lib/supabase/public";
-import { ProductDatabase, ProductImagesDatabase, ProductVariantDatabase } from "../types/product-type";
 
-export async function getProductById(id: string) {
+export async function getFullProductDetails(id: string) {
   return unstable_cache(
-    async (): Promise<ProductDatabase | null> => {
+    async () => {
       const supabase = supabasePublic;
-      const { data: product, error } = await supabase
+
+      const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select(`
+          *,
+          product_images ( id, url, position ),
+          product_variants ( id, name, material, is_principal, imagens ),
+          reviews ( id, user_id, rating, comment, created_at )
+        `)
         .eq("id", id)
+        .order("position", { referencedTable: "product_images", ascending: true })
+        .order("created_at", { referencedTable: "reviews", ascending: false })
         .maybeSingle();
 
       if (error) {
-        throw new Error("Erro ao buscar produto: " + error.message);
+        throw new Error("Erro ao carregar detalhes do produto: " + error.message);
       }
-      return product as ProductDatabase | null;
+
+      return data;
     },
-    [`product-${id}`],
-    { tags: [`product-${id}`] }
-  )();
-}
-
-export async function getProductImages(productId: string) {
-  return unstable_cache(
-    async (): Promise<ProductImagesDatabase> => {
-      const supabase = supabasePublic;
-      const { data: imgs, error } = await supabase
-        .from("product_images")
-        .select("*")
-        .eq("product_id", productId)
-        .order("position", { ascending: true });
-
-      if (error) {
-        throw new Error("Erro ao buscar imagens: " + error.message);
-      }
-      return (imgs ?? []) as ProductImagesDatabase;
-    },
-    [`product-images-${productId}`],
-    { tags: [`product-images-${productId}`] }
-  )();
-}
-
-export async function getProductVariants(productId: string) {
-  return unstable_cache(
-    async (): Promise<ProductVariantDatabase[]> => {
-      const supabase = supabasePublic;
-      const { data: variants, error } = await supabase
-        .from("product_variants")
-        .select("*")
-        .eq("product_id", productId);
-
-      if (error) {
-        throw new Error("Erro ao buscar variantes: " + error.message);
-      }
-      return (variants ?? []) as unknown as ProductVariantDatabase[];
-    },
-    [`product-variants-${productId}`],
-    { tags: [`product-variants-${productId}`] }
+    [`product-full-${id}`],
+    { tags: [`product-${id}`], revalidate: 60 }
   )();
 }

@@ -37,44 +37,36 @@ export default function AdminPage() {
    */
   useEffect(() => {
     const hash = window.location.hash.replace("#", "");
+    const rawSearch = searchParams.get("search") ?? "";
+    const cleanSearchFromUrl = rawSearch.replace(/#/g, "").trim();
 
-    if (hash === "pedidos" || hash === "produtos") {
+    // Se houver busca e não houver hash, vai para 'pedidos' por padrão
+    if (cleanSearchFromUrl && !hash) {
+      if (tab !== "pedidos") {
+        setTab("pedidos");
+      }
+    } else if (hash === "pedidos" || hash === "produtos") {
       if (tab !== hash) {
         setTab(hash as "produtos" | "pedidos");
       }
     }
 
-    // Remove o '#' do termo caso o usuário busque com ele na URL
-    const rawSearch = searchParams.get("search") ?? "";
-    const cleanSearchFromUrl = rawSearch.replace(/#/g, "").trim();
-
     if (cleanSearchFromUrl !== searchTerm) {
       setSearchTerm(cleanSearchFromUrl);
     }
-  }, [
-    searchParams,
-    searchTerm,
-    tab,
-    setSearchTerm,
-    setTab,
-  ]);
+  }, [searchParams, searchTerm, tab, setSearchTerm, setTab]);
 
-  const handleTabChange = (
-    newTab: "produtos" | "pedidos",
-  ) => {
+  const handleTabChange = (newTab: "produtos" | "pedidos") => {
     setTab(newTab);
 
-    const params = new URLSearchParams(
-      searchParams.toString(),
-    );
-
+    const params = new URLSearchParams(searchParams.toString());
     const queryString = params.toString();
 
     router.replace(
       `/admin${queryString ? `?${queryString}` : ""}#${newTab}`,
       {
         scroll: false,
-      },
+      }
     );
   };
 
@@ -83,13 +75,10 @@ export default function AdminPage() {
    * Permite que o usuário digite com '#' sem quebrar a busca.
    */
   const handleSearchChange = (value: string) => {
-    // Trata e limpa o termo
     const cleanValue = value.replace(/#/g, "").trim();
     setSearchTerm(cleanValue);
 
-    const params = new URLSearchParams(
-      searchParams.toString(),
-    );
+    const params = new URLSearchParams(searchParams.toString());
 
     if (cleanValue) {
       params.set("search", cleanValue);
@@ -97,17 +86,14 @@ export default function AdminPage() {
       params.delete("search");
     }
 
-    const currentHash =
-      window.location.hash ||
-      `#${tab}`;
-
+    const currentHash = window.location.hash || `#${tab}`;
     const queryString = params.toString();
 
     router.replace(
       `/admin${queryString ? `?${queryString}` : ""}${currentHash}`,
       {
         scroll: false,
-      },
+      }
     );
   };
 
@@ -132,37 +118,21 @@ export default function AdminPage() {
 
           <div className="flex gap-2 bg-muted/40 p-1 rounded-xl border border-border/50">
             <Button
-              variant={
-                tab === "produtos"
-                  ? "default"
-                  : "ghost"
-              }
+              variant={tab === "produtos" ? "default" : "ghost"}
               className={`rounded-lg font-semibold text-sm px-4 ${
-                tab === "produtos"
-                  ? "text-white"
-                  : ""
+                tab === "produtos" ? "text-white" : ""
               }`}
-              onClick={() =>
-                handleTabChange("produtos")
-              }
+              onClick={() => handleTabChange("produtos")}
             >
               Produtos
             </Button>
 
             <Button
-              variant={
-                tab === "pedidos"
-                  ? "default"
-                  : "ghost"
-              }
+              variant={tab === "pedidos" ? "default" : "ghost"}
               className={`rounded-lg font-semibold text-sm px-4 ${
-                tab === "pedidos"
-                  ? "text-white"
-                  : ""
+                tab === "pedidos" ? "text-white" : ""
               }`}
-              onClick={() =>
-                handleTabChange("pedidos")
-              }
+              onClick={() => handleTabChange("pedidos")}
             >
               Pedidos
             </Button>
@@ -180,23 +150,13 @@ export default function AdminPage() {
             </span>
 
             {(
-              [
-                "todos",
-                "ativos",
-                "inativos",
-              ] as StatusFilterType[]
+              ["todos", "ativos", "inativos"] as StatusFilterType[]
             ).map((type) => (
               <Button
                 key={type}
                 size="sm"
-                variant={
-                  statusFilter === type
-                    ? "secondary"
-                    : "outline"
-                }
-                onClick={() =>
-                  setStatusFilter(type)
-                }
+                variant={statusFilter === type ? "secondary" : "outline"}
+                onClick={() => setStatusFilter(type)}
                 className="capitalize h-8 rounded-lg text-xs"
               >
                 {type}
@@ -211,11 +171,7 @@ export default function AdminPage() {
               <Input
                 placeholder="Buscar por código do pedido (ID)..."
                 value={searchTerm}
-                onChange={(event) =>
-                  handleSearchChange(
-                    event.target.value,
-                  )
-                }
+                onChange={(event) => handleSearchChange(event.target.value)}
                 className="w-full sm:max-w-xs rounded-xl h-9 text-sm"
               />
 
@@ -223,43 +179,18 @@ export default function AdminPage() {
               <select
                 className="h-9 px-3 rounded-xl border border-input bg-background text-xs"
                 value={orderStatusFilter}
-                onChange={(event) =>
-                  setOrderStatusFilter(
-                    event.target.value,
-                  )
-                }
+                onChange={(event) => setOrderStatusFilter(event.target.value)}
               >
-                <option value="todos">
-                  Todos os Status
-                </option>
-
+                <option value="todos">Todos os Status</option>
                 <option value="Aguardando Pagamento">
                   Aguardando Pagamento (Orçamentos)
                 </option>
-
-                <option value="Em Preparação">
-                  Em Preparação
-                </option>
-
-                <option value="pronto_para_retirada">
-                  Pronto p/ Retirada
-                </option>
-
-                <option value="preparando_entrega">
-                  Preparando Entrega
-                </option>
-
-                <option value="Etiqueta Paga">
-                  Etiqueta Paga
-                </option>
-
-                <option value="Postado">
-                  Postado
-                </option>
-
-                <option value="Entregue">
-                  Entregue
-                </option>
+                <option value="Em Preparação">Em Preparação</option>
+                <option value="pronto_para_retirada">Pronto p/ Retirada</option>
+                <option value="preparando_entrega">Preparando Entrega</option>
+                <option value="Etiqueta Paga">Etiqueta Paga</option>
+                <option value="Postado">Postado</option>
+                <option value="Entregue">Entregue</option>
               </select>
             </div>
 
@@ -267,18 +198,10 @@ export default function AdminPage() {
             <div className="flex gap-1 bg-muted/40 p-0.5 rounded-lg border border-border w-fit">
               <Button
                 size="sm"
-                variant={
-                  orderTab === "pendentes"
-                    ? "default"
-                    : "ghost"
-                }
-                onClick={() =>
-                  setOrderTab("pendentes")
-                }
+                variant={orderTab === "pendentes" ? "default" : "ghost"}
+                onClick={() => setOrderTab("pendentes")}
                 className={`h-8 rounded-md text-xs ${
-                  orderTab === "pendentes"
-                    ? "text-white"
-                    : ""
+                  orderTab === "pendentes" ? "text-white" : ""
                 }`}
               >
                 Ativos
@@ -286,18 +209,10 @@ export default function AdminPage() {
 
               <Button
                 size="sm"
-                variant={
-                  orderTab === "arquivados"
-                    ? "default"
-                    : "ghost"
-                }
-                onClick={() =>
-                  setOrderTab("arquivados")
-                }
+                variant={orderTab === "arquivados" ? "default" : "ghost"}
+                onClick={() => setOrderTab("arquivados")}
                 className={`h-8 rounded-md text-xs ${
-                  orderTab === "arquivados"
-                    ? "text-white"
-                    : ""
+                  orderTab === "arquivados" ? "text-white" : ""
                 }`}
               >
                 Arquivados

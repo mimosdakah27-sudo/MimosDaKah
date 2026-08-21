@@ -1,18 +1,29 @@
 "use client";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { useState } from "react";
-import { CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Info, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { enviarParaCarrinhoMelhorEnvio } from "@/lib/actions/melhor-envio";
 
+import { Button } from "@/components/ui/button";
+import { CardContent } from "@/components/ui/card";
+import { enviarParaCarrinhoMelhorEnvio } from "@/lib/actions/melhor-envio";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import { OrderCardActions } from "./order-card-actions";
+import { OrderItemsModal } from "./order-items-modal";
 import { OrderShippingInfo } from "./order-shipping-info";
 import { OrderTracking } from "./order-tracking";
-import { OrderItemsModal } from "./order-items-modal";
-import { OrderCardActions } from "./order-card-actions";
 
 export function OrderCardBody({
   order,
@@ -58,7 +69,6 @@ export function OrderCardBody({
   const storeName = storeConfig?.name || "nossa loja";
   const orderIdShort = order.id.substring(0, 8);
 
-  // Monta o link da loja/admin com o filtro do código do pedido
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const orderLink = `${origin}/admin?search=${orderIdShort}#pedidos`;
 
@@ -81,38 +91,57 @@ export function OrderCardBody({
 
       {isMelhorEnvio && (
         <div className="space-y-1">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <div className="w-full">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="w-full h-8 text-xs font-semibold bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center gap-1.5"
-                      onClick={() => resendToMelhorEnvio()}
-                      disabled={isResending}
-                    >
-                      <RefreshCw
-                        size={13}
-                        className={isResending ? "animate-spin" : ""}
-                      />
-                      {isResending ? "Enviando..." : "Reenviar ao Melhor Envio"}
-                      <Info size={12} className="ml-1 opacity-70 shrink-0" />
-                    </Button>
-                  </div>
-                }
-              ></TooltipTrigger>
-              <TooltipContent side="top" className="max-w-xs text-xs">
-                <p>
-                  <strong>Aviso:</strong> O reenvio adiciona o item novamente no
-                  carrinho do Melhor Envio, mas <u>não atualizará</u> o
-                  protocolo vinculado a este pedido. O webhook continuará
-                  monitorando apenas o protocolo original.
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="w-full h-8 text-xs font-semibold bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 dark:text-blue-400 flex items-center justify-center gap-1.5"
+                  disabled={isResending}
+                >
+                  <RefreshCw
+                    size={13}
+                    className={isResending ? "animate-spin" : ""}
+                  />
+                  {isResending ? "Enviando..." : "Reenviar ao Melhor Envio"}
+                </Button>
+              }
+            />
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  Confirmar reenvio?
+                </AlertDialogTitle>
+                <AlertDialogDescription
+                  render={
+                    <div className="space-y-2 text-xs">
+                      <p>
+                        Esta ação irá adicionar os itens deste pedido novamente
+                        ao carrinho no painel do Melhor Envio.
+                      </p>
+                      <p className="font-medium text-foreground">
+                        <strong>Aviso importante:</strong> Este reenvio apenas
+                        coloca os produtos de volta no seu carrinho do Melhor
+                        Envio. O rastreamento automático do sistema continuará
+                        acompanhando apenas a etiqueta criada na primeira vez.
+                      </p>
+                    </div>
+                  }
+                />
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => resendToMelhorEnvio()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Sim, reenviar
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       )}
 

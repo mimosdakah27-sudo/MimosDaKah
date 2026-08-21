@@ -22,12 +22,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useStore } from "@/hooks/use-store";
 import { createCheckoutSession } from "@/lib/actions/checkout";
 import { isLocalZip, maskCPF } from "@/lib/utils";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
-import { useAddress } from "../endereco/hooks/use-address";
 import { AddressCard } from "./components/AddressCard";
 import { OrderSummary } from "./components/OrderSummary";
 import { ShippingCard } from "./components/ShippingCard";
 import { ShippingOptions } from "./components/ShippingOptions";
+import { useAddress } from "../endereco/hooks/use-address";
 import { useCheckout } from "./hooks/use-checkout";
 import { useShipping } from "./hooks/use-shipping";
 
@@ -35,29 +36,75 @@ export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // CAPTURA O ID DO PEDIDO/ORÇAMENTO EXISTENTE ENVIADO NA URL
   const existingOrderId = searchParams.get("order_id");
 
   const [step, setStep] = useState<"shipping" | "review">("shipping");
   const [selectedRate, setSelectedRate] = useState<any>(null);
   const [isStripeLoading, setIsStripeLoading] = useState(false);
-
   const [hasCompletedShipping, setHasCompletedShipping] = useState(false);
+  const [quoteOrder, setQuoteOrder] = useState<any>(null);
 
   const { user } = useAuth();
   const { addresses, activateAddress, isPending } = useAddress(user?.id || "");
-  const { items, subtotal, form } = useCheckout();
+  const { items: cartItems, subtotal: cartSubtotal, form } = useCheckout();
   const { config } = useStore();
 
+  // Se houver um existingOrderId, busca os dados da ordem para saber se é um orçamento
   useEffect(() => {
-    if (items && items.length === 0) {
+    if (!existingOrderId) return;
+    const fetchExistingOrder = async () => {
+      const supabase = supabaseBrowser();
+      const { data, error } = await supabase
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("id", existingOrderId)
+        .single();
+
+      if (!error && data) {
+        setQuoteOrder(data);
+      }
+    };
+    fetchExistingOrder();
+  }, [existingOrderId]);
+
+  // Se não for orçamento e o carrinho estiver vazio, volta
+  useEffect(() => {
+    if (!existingOrderId && cartItems && cartItems.length === 0) {
       router.back();
     }
-  }, [items, router]);
+  }, [cartItems, existingOrderId, router]);
+
+  // Define os itens e subtotal dependendo de ser um Orçamento ou Carrinho Normal
+  const items = useMemo(() => {
+    if (quoteOrder && quoteOrder.order_items) {
+      return quoteOrder.order_items.map((item: any) => ({
+        quantity: item.quantity,
+        product: {
+          id: item.product_id,
+          nome: item.product_name,
+          preco: item.unit_price,
+          imagem_url: item.product_image,
+          weight: item.item_weight,
+          width: item.item_width,
+          height: item.item_height,
+          length: item.item_length,
+          variant_id: item.variant_id,
+          name: item.name,
+          tamanho: item.tamanho,
+        },
+      }));
+    }
+    return cartItems;
+  }, [quoteOrder, cartItems]);
+
+  const subtotal = useMemo(() => {
+    if (quoteOrder) return Number(quoteOrder.total);
+    return cartSubtotal;
+  }, [quoteOrder, cartSubtotal]);
 
   const activeAddress = useMemo(
-    () => addresses.find((a: any) => a.active),
-    [addresses],
+    () => addresses?.find((a: any) => a.active),
+    [addresses]
   );
   const hasNoAddress = !addresses || addresses.length === 0;
 
@@ -77,7 +124,7 @@ export default function CheckoutPage() {
   const { data: shippingRates, isLoading } = useShipping(
     config?.zip_code,
     activeAddress?.zip_code,
-    items,
+    items
   );
 
   const localOptions = useMemo(() => {
@@ -110,7 +157,7 @@ export default function CheckoutPage() {
 
   const total = useMemo(
     () => Number(subtotal) + (Number(selectedRate?.price) || 0),
-    [subtotal, selectedRate],
+    [subtotal, selectedRate]
   );
 
   const isShippingComplete =
@@ -200,8 +247,7 @@ export default function CheckoutPage() {
                         Nenhum endereço cadastrado
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        Você precisa cadastrar um endereço de entrega para
-                        prosseguir.
+                        Você precisa cadastrar um endereço de entrega para prosseguir.
                       </p>
                     </div>
                     <Button
@@ -211,7 +257,7 @@ export default function CheckoutPage() {
                         </Link>
                       }
                       className="rounded-md px-6"
-                      nativeButton={false}
+                      nativeButton={true}
                     ></Button>
                   </CardContent>
                 </Card>
@@ -219,8 +265,7 @@ export default function CheckoutPage() {
                 <>
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" /> Endereço de
-                      Destino
+                      <MapPin className="w-4 h-4 text-primary" /> Endereço de Destino
                     </h3>
                     <AddressCard
                       address={activeAddress}
@@ -285,7 +330,7 @@ export default function CheckoutPage() {
                           value={selectedRate?.id ?? ""}
                           onValueChange={(id) =>
                             setSelectedRate(
-                              localOptions.find((o) => o.id === id),
+                              localOptions.find((o) => o.id === id)
                             )
                           }
                           className="space-y-3"
@@ -305,8 +350,7 @@ export default function CheckoutPage() {
                                 Frete não disponível
                               </h3>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Estamos na mesma região, mas não encontramos
-                                opções de entrega configuradas.
+                                Estamos na mesma região, mas não encontramos opções de entrega configuradas.
                               </p>
                             </div>
                             <Button
@@ -315,7 +359,7 @@ export default function CheckoutPage() {
                                 <Link href="/endereco">Revisar endereço</Link>
                               )}
                               className="w-full"
-                              nativeButton={false}
+                              nativeButton={true}
                             ></Button>
                           </CardContent>
                         </Card>
@@ -352,8 +396,7 @@ export default function CheckoutPage() {
                   <CardContent className="p-5 space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <MapPin size={16} className="text-primary" /> Endereço
-                        de Entrega
+                        <MapPin size={16} className="text-primary" /> Endereço de Entrega
                       </h3>
                       <button
                         onClick={() => setStep("shipping")}
@@ -418,7 +461,8 @@ export default function CheckoutPage() {
                 onClick={async () => {
                   setIsStripeLoading(true);
                   const checkoutPayload = {
-                    orderId: existingOrderId || null, // <--- INJEÇÃO DO ID EXISTENTE PARA FAZER UPDATE EM VEZ DE INSERT
+                    orderId: existingOrderId || null,
+                    isQuote: Boolean(quoteOrder || existingOrderId),
                     items: items.map((item: any) => ({
                       ...item,
                       product: {
@@ -447,8 +491,7 @@ export default function CheckoutPage() {
                     },
                   };
                   try {
-                    const { url } =
-                      await createCheckoutSession(checkoutPayload);
+                    const { url } = await createCheckoutSession(checkoutPayload);
                     if (url) window.location.href = url;
                   } catch (error) {
                     console.error("ERRO no Checkout:", error);
