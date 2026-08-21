@@ -10,7 +10,7 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { BackButton } from "@/components/site/back-button";
@@ -33,6 +33,11 @@ import { useShipping } from "./hooks/use-shipping";
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // CAPTURA O ID DO PEDIDO/ORÇAMENTO EXISTENTE ENVIADO NA URL
+  const existingOrderId = searchParams.get("order_id");
+
   const [step, setStep] = useState<"shipping" | "review">("shipping");
   const [selectedRate, setSelectedRate] = useState<any>(null);
   const [isStripeLoading, setIsStripeLoading] = useState(false);
@@ -413,11 +418,11 @@ export default function CheckoutPage() {
                 onClick={async () => {
                   setIsStripeLoading(true);
                   const checkoutPayload = {
+                    orderId: existingOrderId || null, // <--- INJEÇÃO DO ID EXISTENTE PARA FAZER UPDATE EM VEZ DE INSERT
                     items: items.map((item: any) => ({
                       ...item,
                       product: {
                         ...item.product,
-                        // Mapeia variant_id, name e tamanho de acordo com o DB e Server Action atualizados
                         variant_id:
                           item.product.variant_id || item.product.v || null,
                         name: item.product.name || null,

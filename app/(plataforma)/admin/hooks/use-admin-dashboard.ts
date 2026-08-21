@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { getAdminDashboardData } from "../services/admin-service";
@@ -11,16 +12,19 @@ export type OrderTabType = "pendentes" | "arquivados";
 
 export function useAdminDashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAdmin, loading: authLoading } = useAuth();
+
   const [tab, setTab] = useState<"produtos" | "pedidos">("produtos");
-  
-  // Estado para Produtos
-  const [statusFilter, setStatusFilter] = useState<StatusFilterType>("todos");
-  
-  // Estados para Pedidos
+
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilterType>("todos");
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [orderTab, setOrderTab] = useState<OrderTabType>("pendentes");
-  const [orderStatusFilter, setOrderStatusFilter] = useState<string>("todos");
+  const [orderTab, setOrderTab] =
+    useState<OrderTabType>("pendentes");
+  const [orderStatusFilter, setOrderStatusFilter] =
+    useState<string>("todos");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-data"],
@@ -30,8 +34,18 @@ export function useAdminDashboard() {
     staleTime: 0,
   });
 
+  // URL -> estado da pesquisa
+  useEffect(() => {
+    const searchFromUrl = searchParams.get("search") ?? "";
+
+    if (searchFromUrl !== searchTerm) {
+      setSearchTerm(searchFromUrl);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     if (authLoading) return;
+
     if (!user) {
       router.push("/login");
     } else if (!isAdmin) {
@@ -39,46 +53,74 @@ export function useAdminDashboard() {
     }
   }, [user, isAdmin, authLoading, router]);
 
-  // Aplica o filtro de produtos na memória
   const filteredProducts = useMemo(() => {
     const allProducts = data?.products ?? [];
-    
+
     if (statusFilter === "ativos") {
       return allProducts.filter((p: any) => p.ativo !== false);
     }
+
     if (statusFilter === "inativos") {
       return allProducts.filter((p: any) => p.ativo === false);
     }
-    
+
     return allProducts;
   }, [data?.products, statusFilter]);
 
-  // Aplica o filtro e busca de pedidos na memória
   const filteredOrders = useMemo(() => {
     const allOrders = data?.orders ?? [];
-    
-    // 1. Filtra por Aba (Ativos/Arquivados)
-    let list = allOrders.filter((o: any) => 
-      orderTab === "pendentes" ? !o.is_archived : o.is_archived
+
+    let list = allOrders.filter((o: any) =>
+      orderTab === "pendentes"
+        ? !o.is_archived
+        : o.is_archived
     );
 
-    // 2. Filtra por Status do pedido
     if (orderStatusFilter !== "todos") {
-      list = list.filter((o: any) => o.status === orderStatusFilter);
-    }
-    
-    // 3. Filtra por termo de busca (ID, Protocolo ou CPF/Documento)
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase().replace(/\D/g, ""); // Limpa termo para busca numérica
-      list = list.filter((o: any) => 
-        o.id.toLowerCase().includes(term) || 
-        o.melhor_envio_protocol?.toLowerCase().includes(term) ||
-        o.shipping_document?.replace(/\D/g, "").includes(term)
+      list = list.filter(
+        (o: any) => o.status === orderStatusFilter
       );
     }
-    
+
+    if (searchTerm.trim()) {
+      const term = searchTerm
+        .trim()
+        .replace(/^#/, "")
+        .toLowerCase();
+
+      list = list.filter((o: any) => {
+        const orderId = String(o.id ?? "").toLowerCase();
+
+        const protocol = String(
+          o.melhor_envio_protocol ?? ""
+        ).toLowerCase();
+
+        const document = String(
+          o.shipping_document ?? ""
+        ).replace(/\D/g, "");
+
+        // Código reduzido do pedido.
+        // IMPORTANTE:
+        // use aqui EXATAMENTE a mesma regra
+        // usada para mostrar o código na interface.
+        const orderCode = orderId.slice(0, 4);
+
+        return (
+          orderCode.includes(term) ||
+          orderId.includes(term) ||
+          protocol.includes(term) ||
+          document.includes(term)
+        );
+      });
+    }
+
     return list;
-  }, [data?.orders, searchTerm, orderTab, orderStatusFilter]);
+  }, [
+    data?.orders,
+    searchTerm,
+    orderTab,
+    orderStatusFilter,
+  ]);
 
   return {
     tab,

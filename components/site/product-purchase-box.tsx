@@ -1,4 +1,3 @@
-// --- 5. components/site/product-purchase-box.tsx ---
 "use client";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,7 +26,7 @@ export function ProductPurchaseBox({
 }) {
   const router = useRouter();
   const add = useCart((s) => s.add);
-  const setOpen = useCart((s) => s.setOpen); // <-- Adicionado para controlar a abertura da gaveta do carrinho
+  const setOpen = useCart((s) => s.setOpen);
   const { config } = useStore();
   const { profile } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -82,9 +81,14 @@ export function ProductPurchaseBox({
     const variantText = currentVariant?.name ? ` - Variação: ${currentVariant.name}` : "";
     const materialText = currentVariant?.material ? ` (Material: ${currentVariant.material})` : "";
 
+    // Pega a URL exata do produto para anexar na mensagem
+    const productUrl = typeof window !== "undefined" ? window.location.href : "";
+
     const message = `Olá! Gostaria de fazer um orçamento / solicitar informações sobre o produto:
 *${product.nome}*${variantText}${materialText}
 *(ID: #${productIdShort})*
+
+*Link do Produto:* ${productUrl}
 
 *Dados do Cliente:*
 - Nome: ${userName}${userPhone ? `\n- Telefone: ${userPhone}` : ""}${userEmail ? `\n- E-mail: ${userEmail}` : ""}
@@ -107,7 +111,7 @@ Poderia me passar mais detalhes?`;
     };
 
     add(itemPayload, 1);
-    setOpen(true); // <-- Abre a gaveta do carrinho especificamente ao clicar aqui
+    setOpen(true);
     toast.success("Produto adicionado ao carrinho!");
   };
 
@@ -124,10 +128,8 @@ Poderia me passar mais detalhes?`;
       nome: `${product.nome}${currentVariant?.name ? ` - ${currentVariant.name}` : ""}`,
     };
 
-    // Adiciona o item direto no estado persistente do carrinho SEM abrir o carrinho lateral
     add(itemPayload, 1);
 
-    // Redireciona para o checkout preservando o carrinho carregado
     if (isWhatsappFinalizacao) {
       router.push("/checkout?whatsapp_flow=true");
     } else {
@@ -181,7 +183,7 @@ Poderia me passar mais detalhes?`;
         </div>
       )}
 
-      {/* Aviso amigável para produtos que finalizam no WhatsApp */}
+      {/* Aviso para produtos que finalizam no WhatsApp */}
       {isWhatsappFinalizacao && (
         <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
           <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wide">
@@ -193,7 +195,7 @@ Poderia me passar mais detalhes?`;
         </div>
       )}
 
-      {/* Renderiza seletor de variantes apenas se houver variações válidas cadastradas */}
+      {/* Seletor de variantes */}
       {hasValidVariants && (
         <div className="space-y-2 pt-2">
           <div className="space-y-0.5">
@@ -267,7 +269,7 @@ Poderia me passar mais detalhes?`;
         </div>
       </div>
 
-      {/* Ações Dinâmicas baseadas no Tipo de Venda */}
+      {/* Ações */}
       <div className="space-y-3 pt-4 border-t border-border/40">
         {isOrcamento ? (
           <Button
@@ -310,7 +312,7 @@ Poderia me passar mais detalhes?`;
         )}
       </div>
 
-      {/* Meios de Pagamento (Oculto se for orçamento puro) */}
+      {/* Meios de Pagamento */}
       {!isOrcamento && (
         <div className="pt-4 border-t border-border/40 space-y-4">
           <span className="text-sm font-semibold text-foreground block">

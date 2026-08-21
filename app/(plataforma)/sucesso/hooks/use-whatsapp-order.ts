@@ -1,6 +1,5 @@
-// use-whatsapp-order.ts
-import { useStore } from "@/hooks/use-store";
 import { useAuth } from "@/hooks/use-auth";
+import { useStore } from "@/hooks/use-store";
 
 export function useWhatsAppOrder() {
   const { config } = useStore();
@@ -18,16 +17,23 @@ export function useWhatsAppOrder() {
         const prodName = item.product?.nome || item.product_name || "Produto";
         const variantText = item.name ? ` (Variação: ${item.name})` : "";
         const sizeText = item.tamanho ? ` - Tamanho: ${item.tamanho}` : "";
-        const materialText = item.product?.material ? ` - Material: ${item.product.material}` : "";
+        const materialText = item.product?.material
+          ? ` - Material: ${item.product.material}`
+          : "";
         return `- ${prodName}${variantText}${sizeText}${materialText} (Qtd: ${item.quantity})`;
       })
       .join("\n");
+
+    // Constrói o link direto do pedido filtrado na tela de perfil do cliente
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const orderLink = `${origin}/profile?order=${productIdShort}`;
 
     const message = `Olá! Realizei o pagamento do pedido #${productIdShort} e preciso finalizar os detalhes personalizados dos seguintes itens:
 
 ${productsListText}
 
 *Cliente:* ${userName}
+*Link do pedido:* ${orderLink}
 
 Poderia me ajudar com os detalhes da arte e produção?`;
 

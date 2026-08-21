@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageCircle, Zap, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -30,7 +30,6 @@ export function ProductCard({
   const isAtivo = product.ativo !== false;
   const tipoVenda = product.tipo_venda || "normal";
   const isOrcamento = tipoVenda === "orcamento";
-  const isWhatsappFinalizacao = tipoVenda === "whatsapp_finalizacao";
 
   // Lógica de preços e desconto (somente se não for orçamento)
   const precoRegular = product.preco || 0;
@@ -56,23 +55,13 @@ export function ProductCard({
       
       {/* Container fixo e estritamente quadrado (aspect-square) em todas as telas */}
       <div className="relative aspect-square w-full overflow-hidden bg-muted/20">
-        <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start">
-          {product.destaque && (
-            <span className="bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs backdrop-blur-xs">
-              <Zap className="h-2.5 w-2.5 fill-amber-500" /> Destaque
-            </span>
-          )}
-          {isOrcamento && (
+        {isOrcamento && (
+          <div className="absolute top-2 left-2 z-20 flex flex-col gap-1 items-start">
             <span className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs backdrop-blur-xs">
               <HelpCircle className="h-2.5 w-2.5" /> Sob Orçamento
             </span>
-          )}
-          {isWhatsappFinalizacao && (
-            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 shadow-xs backdrop-blur-xs">
-              <MessageCircle className="h-2.5 w-2.5" /> Detalhes no Zap
-            </span>
-          )}
-        </div>
+          </div>
+        )}
 
         <Image
           src={product.imagem_url || "/placeholder.png"}
@@ -127,7 +116,7 @@ export function ProductCard({
 
         <div className="pt-2 border-t border-border/40 mt-auto">
           <span className="text-[10px] text-muted-foreground font-medium block">
-            {isOrcamento ? "Atendimento personalizado" : "Frete calculado no checkout"}
+            {isOrcamento ? "Atendimento personalizado" : "Frete calculated no checkout"}
           </span>
         </div>
 
