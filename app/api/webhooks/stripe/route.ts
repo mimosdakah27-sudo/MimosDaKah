@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!,
+      process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: any) {
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
@@ -49,49 +49,34 @@ export async function POST(req: Request) {
 
       console.log(`[WEBHOOK STRIPE] Pedido ${orderId} atualizado para Pago com sucesso.`);
 
-      // 2. Buscar os itens já inseridos no pedido
-      const { data: insertedItems, error: itemsQueryError } = await supabaseAdmin
-        .from("order_items")
-        .select("*")
-        .eq("order_id", orderId);
+      // 2. Buscar o pedido completo com os itens cadastrados no Supabase
+      const { data: order, error: orderQueryError } = await supabaseAdmin
+        .from("orders")
+        .select("*, order_items(*)")
+        .eq("id", orderId)
+        .single();
 
-      if (itemsQueryError || !insertedItems) {
-        console.error("Erro ao buscar itens do pedido:", itemsQueryError);
-        throw new Error("Erro ao buscar itens do pedido");
+      if (orderQueryError || !order) {
+        console.error("Erro ao buscar pedido no Supabase:", orderQueryError);
+        throw new Error("Erro ao buscar pedido");
       }
 
-      // Desserializar dados para envio do Melhor Envio
-      const shippingData = JSON.parse(metadata.shippingData || "{}");
-      const userData = JSON.parse(metadata.userData || "{}");
-
-      // Revalidação dos produtos e verificação opcional (se precisar do tipo_venda, busque na tabela products)
-      for (const item of insertedItems) {
-        if (item.product_id) {
-          await revalidateProductFull(item.product_id);
+      // Revalidação do cache dos produtos
+      if (order.order_items) {
+        for (const item of order.order_items) {
+          if (item.product_id) {
+            await revalidateProductFull(item.product_id);
+          }
         }
       }
 
       // 3. INTEGRAÇÃO COM MELHOR ENVIO
-      if (metadata.shippingType === 'retirada' || metadata.shippingType === 'entrega_propria') {
+      if (order.shipping_type === "retirada" || order.shipping_type === "entrega_propria") {
         console.log(`[WEBHOOK STRIPE] Pedido ${orderId} local. Nenhuma ação externa necessária.`);
       } else {
         console.log(`[WEBHOOK STRIPE] Enviando pedido ${orderId} para o carrinho do Melhor Envio...`);
         try {
-          await enviarParaCarrinhoMelhorEnvio({
-            shipping: {
-              id: shippingData.id, 
-              name: userData.name,
-              address: userData.address,
-              city: userData.city,
-              zip: userData.zip,
-              phone: userData.phone,
-              email: userData.email,
-              document: userData.document
-            },
-            items: insertedItems,
-            orderId: orderId
-          });
-          
+          await enviarParaCarrinhoMelhorEnvio(order);
           console.log(`[WEBHOOK STRIPE] Item adicionado ao carrinho do Melhor Envio com sucesso!`);
         } catch (integrationError) {
           console.error("❌ Falha na integração com Melhor Envio:", integrationError);
@@ -101,7 +86,6 @@ export async function POST(req: Request) {
             .eq("id", orderId);
         }
       }
-      
     } catch (error) {
       console.error("[WEBHOOK STRIPE] Erro interno:", error);
       return new NextResponse("Erro processando pedido", { status: 500 });

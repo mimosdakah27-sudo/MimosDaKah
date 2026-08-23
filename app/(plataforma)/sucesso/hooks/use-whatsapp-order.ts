@@ -26,7 +26,7 @@ export function useWhatsAppOrder() {
 
     // Constrói o link direto do pedido filtrado na tela de perfil do cliente
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const orderLink = `${origin}/profile?order=${productIdShort}`;
+    const orderLink = `${origin}/perfil?order=${productIdShort}`;
 
     const message = `Olá! Realizei o pagamento do pedido #${productIdShort} e preciso finalizar os detalhes personalizados dos seguintes itens:
 

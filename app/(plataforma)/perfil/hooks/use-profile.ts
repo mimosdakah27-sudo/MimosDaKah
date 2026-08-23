@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { toast } from "sonner"; // Ajustado para manter o padrão semântico de toast do seu app
-import { getUserOrders,  } from "../services/profile-service";
+import { toast } from "sonner";
+import { getUserOrders, rejectQuote } from "../services/profile-service";
 import type { OrderWithItems } from "../types/profile-type";
 
 export function useProfile() {
@@ -32,11 +32,31 @@ export function useProfile() {
     fetchOrders();
   }, [user, authLoading, router, fetchOrders]);
 
-  
+  /**
+   * Remove o orçamento do banco e atualiza a lista local.
+   */
+  const handleRejectQuote = useCallback(async (orderId: string) => {
+  try {
+    await rejectQuote(orderId);
+
+    setOrders((currentOrders) =>
+      currentOrders.filter((order) => order.id !== orderId)
+    );
+
+    toast.success("Orçamento recusado com sucesso.");
+  } catch (error: any) {
+    console.error("Erro ao recusar orçamento:", error);
+
+    toast.error(
+      error?.message || "Não foi possível recusar o orçamento."
+    );
+  }
+}, []);
 
   return {
     user,
     orders,
     isInitialLoading: authLoading || loading,
+    handleRejectQuote,
   };
 }

@@ -8,7 +8,6 @@ export async function createCheckoutSession(payload: any) {
 
   const isQuote = Boolean(payload.isQuote);
 
-  // Identificação do tipo de entrega
   const isPickup = payload.shipping.id === "pickup";
   const isLocalDelivery = payload.shipping.id === "local";
   const isBetterShipping = !isPickup && !isLocalDelivery;
@@ -67,7 +66,6 @@ export async function createCheckoutSession(payload: any) {
   const orderPayload = {
     user_id: payload.user.id || null,
     total: Number(total),
-    // Se for orçamento, mantém "Aguardando Pagamento" para não disparar a trigger do Supabase
     status: isQuote ? "Aguardando Pagamento" : "aguarde",
     shipping_type: shippingType,
     tracking_code:
@@ -91,7 +89,6 @@ export async function createCheckoutSession(payload: any) {
   };
 
   if (orderId) {
-    // Atualização do orçamento com frete e dados do cliente
     const { error: updateError } = await supabaseAdmin
       .from("orders")
       .update(orderPayload)
@@ -105,7 +102,6 @@ export async function createCheckoutSession(payload: any) {
     await supabaseAdmin.from("order_items").delete().eq("order_id", orderId);
     console.log(`[CHECKOUT] Pedido de orçamento ${orderId} atualizado sem alterar status.`);
   } else {
-    // Criação de pedido do zero
     const { data: newOrder, error: orderError } = await supabaseAdmin
       .from("orders")
       .insert(orderPayload)
@@ -121,7 +117,6 @@ export async function createCheckoutSession(payload: any) {
     console.log(`[CHECKOUT] Pedido novo criado com ID: ${orderId}`);
   }
 
-  // Inserção dos itens
   const itemsToInsert = payload.items.map((i: any) => {
     const rawVariantId = i.product.variant_id || i.product.v || null;
     const cleanVariantId = (rawVariantId && rawVariantId !== "default") ? rawVariantId : null;
@@ -152,7 +147,6 @@ export async function createCheckoutSession(payload: any) {
     throw new Error("Erro ao salvar itens do pedido.");
   }
 
-  // Metadados do Stripe
   const minimalItemsData = payload.items.map((i: any) => {
     const rawVariantId = i.product.variant_id || i.product.v || null;
     const cleanVariantId = (rawVariantId && rawVariantId !== "default") ? rawVariantId : null;
@@ -162,9 +156,6 @@ export async function createCheckoutSession(payload: any) {
       q: i.quantity,
       p: getEffectivePrice(i.product),
       v: cleanVariantId,
-      name: i.product.name || null,
-      tamanho: i.product.tamanho || null,
-      tipo_venda: i.product.tipo_venda || "normal",
     };
   });
 
@@ -174,19 +165,9 @@ export async function createCheckoutSession(payload: any) {
     total: total.toString(),
     status: isQuote ? "Aguardando Pagamento" : "aguarde",
     shippingType: shippingType,
-    calculatedWeight: calculatedWeight.toString(),
-    calculatedDeliveryDate: calculatedDeliveryDate.toISOString(),
-    userData: JSON.stringify(payload.user),
-    shippingData: JSON.stringify({
-      id: payload.shipping.id,
-      name: payload.shipping.name,
-      price: payload.shipping.price,
-      company: evaluatedCompanyName,
-      delivery_time: payload.shipping.delivery_time,
-    }),
   };
 
-  const chunkSize = 3;
+  const chunkSize = 1;
   let chunkCount = 0;
   for (let i = 0; i < minimalItemsData.length; i += chunkSize) {
     chunkCount++;

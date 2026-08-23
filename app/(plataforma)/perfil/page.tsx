@@ -17,7 +17,7 @@ import { useProfile } from "./hooks/use-profile";
 import { OrderCard } from "./components/OrderCard";
 
 export default function ProfilePage() {
-  const { user, orders } = useProfile();
+  const { user, orders, handleRejectQuote } = useProfile();
   const { config } = useStore();
   const { profile } = useAuth();
   const add = useCart((s) => s.add);
@@ -185,6 +185,7 @@ Poderia me ajudar?`;
                 loadingCheckoutId={loadingCheckoutId}
                 onCheckout={handleCheckoutPendingOrder}
                 onWhatsAppSupport={handleWhatsAppSupport}
+                 onRejectOrder={handleRejectQuote}
               />
             ))}
           </div>

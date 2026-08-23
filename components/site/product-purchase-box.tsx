@@ -126,6 +126,7 @@ Poderia me passar mais detalhes?`;
       name: currentVariant?.name,
       material: currentVariant?.material,
       nome: `${product.nome}${currentVariant?.name ? ` - ${currentVariant.name}` : ""}`,
+      product_url: typeof window !== "undefined" ? window.location.href : "", // <--- Adicionado aqui para o fluxo do carrinho/checkout se necessário
     };
 
     add(itemPayload, 1);

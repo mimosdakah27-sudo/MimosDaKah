@@ -1,5 +1,7 @@
 "use client";
 
+import { Card, CardContent } from "@/components/ui/card";
+import { isLocalZip, maskCPF } from "@/lib/utils";
 import {
   AlertCircle,
   Lock,
@@ -15,170 +17,298 @@ import { useEffect, useMemo, useState } from "react";
 
 import { BackButton } from "@/components/site/back-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/use-auth";
 import { useStore } from "@/hooks/use-store";
 import { createCheckoutSession } from "@/lib/actions/checkout";
-import { isLocalZip, maskCPF } from "@/lib/utils";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { useCart } from "@/lib/store/cart";
 
+import { useAddress } from "../endereco/hooks/use-address";
 import { AddressCard } from "./components/AddressCard";
 import { OrderSummary } from "./components/OrderSummary";
 import { ShippingCard } from "./components/ShippingCard";
 import { ShippingOptions } from "./components/ShippingOptions";
-import { useAddress } from "../endereco/hooks/use-address";
 import { useCheckout } from "./hooks/use-checkout";
 import { useShipping } from "./hooks/use-shipping";
 
 export default function CheckoutPage() {
   const router = useRouter();
+
   const searchParams = useSearchParams();
 
+  /**
+   * Se veio de um orçamento,
+   * mantemos somente o ID.
+   *
+   * Os produtos NÃO são buscados novamente
+   * no banco.
+   *
+   * Os produtos vêm exclusivamente do Zustand.
+   */
   const existingOrderId = searchParams.get("order_id");
 
   const [step, setStep] = useState<"shipping" | "review">("shipping");
+
   const [selectedRate, setSelectedRate] = useState<any>(null);
+
   const [isStripeLoading, setIsStripeLoading] = useState(false);
-  const [hasCompletedShipping, setHasCompletedShipping] = useState(false);
-  const [quoteOrder, setQuoteOrder] = useState<any>(null);
+
+  /**
+   * Evita problemas de hidratação
+   * do Zustand persist.
+   */
+  const [isMounted, setIsMounted] = useState(false);
 
   const { user } = useAuth();
+
   const { addresses, activateAddress, isPending } = useAddress(user?.id || "");
-  const { items: cartItems, subtotal: cartSubtotal, form } = useCheckout();
+
+  const { form } = useCheckout();
+
   const { config } = useStore();
 
-  // Se houver um existingOrderId, busca os dados da ordem para saber se é um orçamento
-  useEffect(() => {
-    if (!existingOrderId) return;
-    const fetchExistingOrder = async () => {
-      const supabase = supabaseBrowser();
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .eq("id", existingOrderId)
-        .single();
+  /**
+   * ÚNICA fonte de verdade dos produtos.
+   */
+  const cartItems = useCart((state) => state.items);
 
-      if (!error && data) {
-        setQuoteOrder(data);
-      }
-    };
-    fetchExistingOrder();
-  }, [existingOrderId]);
+  const removeFromCart = useCart((state) => state.remove);
 
-  // Se não for orçamento e o carrinho estiver vazio, volta
+  /**
+   * Hidratação do Zustand.
+   */
   useEffect(() => {
-    if (!existingOrderId && cartItems && cartItems.length === 0) {
+    setIsMounted(true);
+  }, []);
+
+  /**
+   * --------------------------------------------------
+   * ITENS DO CHECKOUT
+   * --------------------------------------------------
+   *
+   * Tanto compra normal quanto orçamento
+   * utilizam exatamente a mesma fonte:
+   *
+   * Zustand -> cartItems
+   */
+  const items = useMemo(() => {
+    return cartItems.map((item: any) => {
+      const product = item?.product || {};
+
+      return {
+        quantity: Number(item.quantity) || 1,
+
+        product: {
+          ...product,
+
+          id: String(product.id),
+
+          nome: product.nome || product.name || "Produto",
+
+          preco: Number(product.preco) || 0,
+
+          imagem_url: product.imagem_url,
+
+          /**
+           * Normaliza a variante.
+           */
+          variant_id: product.variant_id || undefined,
+
+          name: product.name || null,
+
+          tamanho: product.tamanho || null,
+
+          material: product.material || null,
+
+          /**
+           * Dados logísticos.
+           */
+          weight: Number(product.weight) || 0.3,
+
+          width: Number(product.width) || 10,
+
+          height: Number(product.height) || 10,
+
+          length: Number(product.length) || 10,
+        },
+      };
+    });
+  }, [cartItems]);
+
+  /**
+   * Se o carrinho estiver vazio,
+   * volta para a página anterior.
+   */
+  useEffect(() => {
+    if (isMounted && items.length === 0) {
       router.back();
     }
-  }, [cartItems, existingOrderId, router]);
+  }, [isMounted, items.length, router]);
 
-  // Define os itens e subtotal dependendo de ser um Orçamento ou Carrinho Normal
-  const items = useMemo(() => {
-    if (quoteOrder && quoteOrder.order_items) {
-      return quoteOrder.order_items.map((item: any) => ({
-        quantity: item.quantity,
-        product: {
-          id: item.product_id,
-          nome: item.product_name,
-          preco: item.unit_price,
-          imagem_url: item.product_image,
-          weight: item.item_weight,
-          width: item.item_width,
-          height: item.item_height,
-          length: item.item_length,
-          variant_id: item.variant_id,
-          name: item.name,
-          tamanho: item.tamanho,
-        },
-      }));
-    }
-    return cartItems;
-  }, [quoteOrder, cartItems]);
-
+  /**
+   * Subtotal dos produtos.
+   */
   const subtotal = useMemo(() => {
-    if (quoteOrder) return Number(quoteOrder.total);
-    return cartSubtotal;
-  }, [quoteOrder, cartSubtotal]);
+    return items.reduce(
+      (total, item) =>
+        total + Number(item.product?.preco || 0) * Number(item.quantity || 1),
+      0,
+    );
+  }, [items]);
 
+  /**
+   * Endereço ativo.
+   */
   const activeAddress = useMemo(
-    () => addresses?.find((a: any) => a.active),
-    [addresses]
+    () => addresses?.find((address: any) => address.active),
+    [addresses],
   );
+
   const hasNoAddress = !addresses || addresses.length === 0;
 
+  /**
+   * Verifica se o CEP é local.
+   */
   const isLocal = useMemo(() => {
-    if (!activeAddress?.zip_code || !config?.zip_code) return false;
-    return isLocalZip(activeAddress.zip_code, config.zip_code);
-  }, [activeAddress, config]);
-
-  useEffect(() => {
-    if (activeAddress) {
-      form.setValue("zip", activeAddress.zip_code, { shouldValidate: true });
-      form.setValue("address", activeAddress.street, { shouldValidate: true });
-      form.setValue("city", activeAddress.city, { shouldValidate: true });
+    if (!activeAddress?.zip_code || !config?.zip_code) {
+      return false;
     }
-  }, [activeAddress, form]);
 
+    return isLocalZip(activeAddress.zip_code, config.zip_code);
+  }, [activeAddress?.zip_code, config?.zip_code]);
+
+  /**
+   * Preenche o formulário
+   * quando o endereço ativo muda.
+   */
+  useEffect(() => {
+    if (!activeAddress) {
+      return;
+    }
+
+    form.setValue("zip", activeAddress.zip_code, {
+      shouldValidate: true,
+    });
+
+    form.setValue("address", activeAddress.street, {
+      shouldValidate: true,
+    });
+
+    form.setValue("city", activeAddress.city, {
+      shouldValidate: true,
+    });
+  }, [
+    activeAddress?.id,
+    activeAddress?.zip_code,
+    activeAddress?.street,
+    activeAddress?.city,
+  ]);
+
+  /**
+   * Opções de frete.
+   *
+   * Recebe somente os itens atuais
+   * do carrinho.
+   */
   const { data: shippingRates, isLoading } = useShipping(
     config?.zip_code,
     activeAddress?.zip_code,
-    items
+    items,
   );
 
+  /**
+   * Opções de entrega local.
+   */
   const localOptions = useMemo(() => {
-    if (!isLocal) return [];
-    const opts: {
+    if (!isLocal) {
+      return [];
+    }
+
+    const options: {
       id: string;
       name: string;
       price: number;
       delivery_time: string;
       type: "pickup" | "local_delivery";
     }[] = [];
-    if (config?.allow_local_pickup)
-      opts.push({
+
+    if (config?.allow_local_pickup) {
+      options.push({
         id: "pickup",
         name: "Retirada na Loja",
         price: 0,
         delivery_time: "Imediato",
         type: "pickup",
       });
-    if (config?.allow_local_delivery)
-      opts.push({
+    }
+
+    if (config?.allow_local_delivery) {
+      options.push({
         id: "local",
         name: "Entrega Própria",
         price: config.local_delivery_fee || 18,
         delivery_time: "1 dia útil",
         type: "local_delivery",
       });
-    return opts;
-  }, [isLocal, config]);
+    }
 
+    return options;
+  }, [
+    isLocal,
+    config?.allow_local_pickup,
+    config?.allow_local_delivery,
+    config?.local_delivery_fee,
+  ]);
+
+  /**
+   * Total.
+   */
   const total = useMemo(
     () => Number(subtotal) + (Number(selectedRate?.price) || 0),
-    [subtotal, selectedRate]
+    [subtotal, selectedRate?.price],
   );
 
+  /**
+   * Verifica se o envio está completo.
+   */
   const isShippingComplete =
     !hasNoAddress && Boolean(selectedRate) && form.formState.isValid;
 
-  useEffect(() => {
-    if (isShippingComplete) {
-      setHasCompletedShipping(true);
-    }
-  }, [isShippingComplete]);
+  /**
+   * O próprio step representa
+   * se estamos na revisão.
+   */
+  const canOpenReview = isShippingComplete || step === "review";
 
+  /**
+   * Navegação das abas.
+   */
   const handleTabClick = (targetStep: "shipping" | "review") => {
     if (targetStep === "shipping") {
       setStep("shipping");
-    } else if (targetStep === "review") {
-      if (isShippingComplete || hasCompletedShipping) {
-        setHasCompletedShipping(true);
-        setStep("review");
-      }
+      return;
+    }
+
+    if (targetStep === "review" && canOpenReview) {
+      setStep("review");
     }
   };
+
+  /**
+   * Remove diretamente do Zustand.
+   */
+  const handleRemoveItem = (productId: string, variantId?: string) => {
+    removeFromCart(productId, variantId);
+  };
+
+  /**
+   * Evita renderizar antes
+   * da hidratação do Zustand.
+   */
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div className="max-w-7xl mx-auto w-full">
@@ -189,6 +319,7 @@ export default function CheckoutPage() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {step === "shipping" ? "Checkout Seguro" : "Revisão e Pagamento"}
           </h1>
+
           <p className="text-sm text-muted-foreground mt-1">
             {step === "shipping"
               ? "Confirme seu endereço e escolha a forma de envio"
@@ -209,17 +340,18 @@ export default function CheckoutPage() {
             <span className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px]">
               1
             </span>
+
             <span>Entrega</span>
           </button>
 
           <button
             type="button"
             onClick={() => handleTabClick("review")}
-            disabled={!isShippingComplete && !hasCompletedShipping}
+            disabled={!canOpenReview}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
               step === "review"
                 ? "bg-background text-foreground shadow-sm"
-                : isShippingComplete || hasCompletedShipping
+                : canOpenReview
                   ? "text-muted-foreground hover:text-foreground cursor-pointer"
                   : "text-muted-foreground/40 cursor-not-allowed"
             }`}
@@ -227,6 +359,7 @@ export default function CheckoutPage() {
             <span className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px]">
               2
             </span>
+
             <span>Revisão</span>
           </button>
         </div>
@@ -242,31 +375,37 @@ export default function CheckoutPage() {
                     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
                       <AlertCircle className="w-6 h-6" />
                     </div>
+
                     <div className="space-y-1">
                       <h3 className="font-semibold text-base">
                         Nenhum endereço cadastrado
                       </h3>
+
                       <p className="text-sm text-muted-foreground">
-                        Você precisa cadastrar um endereço de entrega para prosseguir.
+                        Você precisa cadastrar um endereço de entrega para
+                        prosseguir.
                       </p>
                     </div>
+
                     <Button
                       render={
                         <Link href="/endereco">
-                          <Plus className="mr-2 w-4 h-4" /> Cadastrar Endereço
+                          <Plus className="mr-2 w-4 h-4" />
+                          Cadastrar Endereço
                         </Link>
                       }
                       className="rounded-md px-6"
-                      nativeButton={true}
-                    ></Button>
+                    />
                   </CardContent>
                 </Card>
               ) : (
                 <>
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" /> Endereço de Destino
+                      <MapPin className="w-4 h-4 text-primary" />
+                      Endereço de Destino
                     </h3>
+
                     <AddressCard
                       address={activeAddress}
                       addresses={addresses}
@@ -282,23 +421,28 @@ export default function CheckoutPage() {
                         <div className="w-9 h-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
                           <User className="w-4 h-4" />
                         </div>
+
                         <div>
                           <h3 className="font-semibold text-sm">
                             Dados para Nota Fiscal
                           </h3>
+
                           <p className="text-xs text-muted-foreground">
                             Obrigatório para emissão da NF-e
                           </p>
                         </div>
                       </div>
+
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-muted-foreground">
                           CPF do Destinatário
                         </label>
+
                         <Input
                           {...form.register("document", {
                             onChange: (e) => {
                               const masked = maskCPF(e.target.value);
+
                               form.setValue("document", masked, {
                                 shouldValidate: true,
                               });
@@ -311,6 +455,7 @@ export default function CheckoutPage() {
                               : ""
                           }
                         />
+
                         {form.formState.errors.document && (
                           <p className="text-xs text-destructive font-medium">
                             {form.formState.errors.document.message}
@@ -322,21 +467,23 @@ export default function CheckoutPage() {
 
                   <div className="space-y-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-primary" /> Opções de Envio
+                      <Truck className="w-4 h-4 text-primary" />
+                      Opções de Envio
                     </h3>
+
                     {isLocal ? (
                       localOptions.length > 0 ? (
                         <RadioGroup
                           value={selectedRate?.id ?? ""}
                           onValueChange={(id) =>
                             setSelectedRate(
-                              localOptions.find((o) => o.id === id)
+                              localOptions.find((option) => option.id === id),
                             )
                           }
                           className="space-y-3"
                         >
-                          {localOptions.map((opt) => (
-                            <ShippingCard key={opt.id} {...opt} />
+                          {localOptions.map((option) => (
+                            <ShippingCard key={option.id} {...option} />
                           ))}
                         </RadioGroup>
                       ) : (
@@ -345,22 +492,25 @@ export default function CheckoutPage() {
                             <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
                               <AlertCircle className="w-6 h-6 text-muted-foreground" />
                             </div>
+
                             <div>
                               <h3 className="font-semibold">
                                 Frete não disponível
                               </h3>
+
                               <p className="text-xs text-muted-foreground mt-1">
-                                Estamos na mesma região, mas não encontramos opções de entrega configuradas.
+                                Estamos na mesma região, mas não encontramos
+                                opções de entrega configuradas.
                               </p>
                             </div>
+
                             <Button
                               variant="outline"
                               render={() => (
                                 <Link href="/endereco">Revisar endereço</Link>
                               )}
                               className="w-full"
-                              nativeButton={true}
-                            ></Button>
+                            />
                           </CardContent>
                         </Card>
                       )
@@ -379,10 +529,7 @@ export default function CheckoutPage() {
               <div className="pt-2">
                 <Button
                   disabled={!isShippingComplete || isPending}
-                  onClick={() => {
-                    setHasCompletedShipping(true);
-                    setStep("review");
-                  }}
+                  onClick={() => setStep("review")}
                   className="w-full h-11 font-semibold"
                 >
                   Continuar para Revisão
@@ -396,19 +543,24 @@ export default function CheckoutPage() {
                   <CardContent className="p-5 space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <MapPin size={16} className="text-primary" /> Endereço de Entrega
+                        <MapPin size={16} className="text-primary" />
+                        Endereço de Entrega
                       </h3>
+
                       <button
+                        type="button"
                         onClick={() => setStep("shipping")}
                         className="text-xs font-medium text-primary hover:underline"
                       >
                         Alterar
                       </button>
                     </div>
+
                     <div className="text-xs text-muted-foreground space-y-0.5">
                       <p className="font-medium text-foreground">
                         {activeAddress?.street}
                       </p>
+
                       <p>
                         {activeAddress?.city} - CEP: {activeAddress?.zip_code}
                       </p>
@@ -420,15 +572,19 @@ export default function CheckoutPage() {
                   <CardContent className="p-5 space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <Truck size={16} className="text-primary" /> Envio e NF
+                        <Truck size={16} className="text-primary" />
+                        Envio e NF
                       </h3>
+
                       <button
+                        type="button"
                         onClick={() => setStep("shipping")}
                         className="text-xs font-medium text-primary hover:underline"
                       >
                         Alterar
                       </button>
                     </div>
+
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p className="font-medium text-foreground">
                         {selectedRate?.type === "pickup" ||
@@ -437,6 +593,7 @@ export default function CheckoutPage() {
                           : `${selectedRate?.company?.name} - ${selectedRate?.name}`}{" "}
                         ({selectedRate?.delivery_time})
                       </p>
+
                       <p>
                         CPF NF:{" "}
                         <span className="font-mono text-foreground">
@@ -450,6 +607,7 @@ export default function CheckoutPage() {
 
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-1">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
+
                 <span>
                   Ambiente 100% seguro com criptografia de ponta a ponta
                 </span>
@@ -459,47 +617,111 @@ export default function CheckoutPage() {
                 className="w-full"
                 disabled={isStripeLoading}
                 onClick={async () => {
+                  if (isStripeLoading) {
+                    return;
+                  }
+
                   setIsStripeLoading(true);
+
+                  /**
+                   * Os produtos enviados ao backend
+                   * vêm EXCLUSIVAMENTE do Zustand.
+                   *
+                   * Isso funciona para:
+                   *
+                   * 1. Compra normal
+                   * 2. Orçamento + carrinho existente
+                   *
+                   * O orderId identifica o orçamento,
+                   * mas não fornece os produtos.
+                   */
                   const checkoutPayload = {
+                    /**
+                     * Mantém o ID do orçamento,
+                     * quando existir.
+                     */
                     orderId: existingOrderId || null,
-                    isQuote: Boolean(quoteOrder || existingOrderId),
+
+                    /**
+                     * O backend consegue identificar
+                     * que esse checkout veio de um
+                     * orçamento através do orderId.
+                     */
+                    isQuote: Boolean(existingOrderId),
+
+                    /**
+                     * ÚNICA fonte dos produtos:
+                     * Zustand.
+                     */
                     items: items.map((item: any) => ({
                       ...item,
+
                       product: {
                         ...item.product,
-                        variant_id:
-                          item.product.variant_id || item.product.v || null,
+
+                        variant_id: item.product.variant_id || null,
+
                         name: item.product.name || null,
+
                         tamanho: item.product.tamanho || null,
+
+                        material: item.product.material || null,
+
                         weight: Number(item.product.weight) || 0.3,
+
                         width: Number(item.product.width) || 10,
+
                         height: Number(item.product.height) || 10,
+
                         length: Number(item.product.length) || 10,
                       },
                     })),
+
+                    /**
+                     * Dados do frete escolhido.
+                     */
                     shipping: selectedRate,
+
+                    /**
+                     * Dados do cliente.
+                     */
                     user: {
                       id: user?.id,
+
                       name: form.getValues("name"),
+
                       email: form.getValues("email"),
+
                       phone: form.getValues("phone"),
+
                       document: form.getValues("document"),
+
                       address: activeAddress?.street,
+
                       city: activeAddress?.city,
+
                       state: activeAddress?.state,
+
                       zip: activeAddress?.zip_code,
                     },
                   };
+
                   try {
-                    const { url } = await createCheckoutSession(checkoutPayload);
-                    if (url) window.location.href = url;
+                    const { url } =
+                      await createCheckoutSession(checkoutPayload);
+
+                    if (url) {
+                      window.location.href = url;
+                    }
                   } catch (error) {
                     console.error("ERRO no Checkout:", error);
+
                     setIsStripeLoading(false);
                   }
                 }}
               >
                 <Lock className="w-4 h-4" />
+
                 {isStripeLoading
                   ? "Processando pagamento..."
                   : "Ir para o Pagamento Seguro"}
@@ -509,7 +731,12 @@ export default function CheckoutPage() {
         </div>
 
         <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4 order-1 lg:order-2">
-          <OrderSummary items={items} shipping={selectedRate} total={total} />
+          <OrderSummary
+            items={items}
+            shipping={selectedRate}
+            total={total}
+            onRemoveItem={handleRemoveItem}
+          />
         </div>
       </div>
     </div>

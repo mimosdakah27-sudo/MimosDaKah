@@ -2,7 +2,7 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
-export async function enviarParaCarrinhoMelhorEnvio(data: any) {
+export async function enviarParaCarrinhoMelhorEnvio(order: any) {
   const supabase = supabaseAdmin;
 
   console.log("Iniciando integração com Melhor Envio...");
@@ -17,19 +17,20 @@ export async function enviarParaCarrinhoMelhorEnvio(data: any) {
     throw new Error("Configurações da loja ou integração ausentes.");
   }
 
-  // Correção: Usa o peso real dos itens sem adicionar valores fixos inventados
-  const totalWeight = data.items.reduce(
+  const items = order.order_items || [];
+
+  const totalWeight = items.reduce(
     (acc: number, i: any) => acc + (Number(i.item_weight) || 0) * i.quantity,
-    0,
+    0
   );
   
-  const totalValue = data.items.reduce(
+  const totalValue = items.reduce(
     (acc: number, i: any) => acc + (Number(i.unit_price) || 0) * i.quantity,
-    0,
+    0
   );
 
   const payload = {
-    service: Number(data.shipping.id),
+    service: Number(order.shipping_service_id),
     from: {
       name: store.name,
       phone: store.phone,
@@ -37,38 +38,37 @@ export async function enviarParaCarrinhoMelhorEnvio(data: any) {
       address: store.address,
       city: store.city,
       state: store.state,
-      postal_code: store.zip_code,
+      postal_code: store.zip_code?.replace(/\D/g, ""),
     },
     to: {
-      name: data.shipping.name,
-      phone: data.shipping.phone,
-      email: data.shipping.email,
-      address: data.shipping.address,
-      city: data.shipping.city,
-      state: data.shipping.state,
-      postal_code: data.shipping.zip,
-      document: data.shipping.document,
+      name: order.shipping_name,
+      phone: order.shipping_phone,
+      email: order.shipping_email,
+      address: order.shipping_address,
+      city: order.shipping_city,
+      state: order.shipping_state,
+      postal_code: order.shipping_zip?.replace(/\D/g, ""),
+      document: order.shipping_document,
     },
-    products: data.items.map((i: any) => ({
+    products: items.map((i: any) => ({
       name: i.product_name,
       quantity: Number(i.quantity),
       unitary_value: Number(i.unit_price),
     })),
-    // Correção: Usa estritamente as dimensões reais cadastradas no produto
     volumes: [
       {
-        height: Number(data.items[0]?.item_height) || 10,
-        width: Number(data.items[0]?.item_width) || 10,
-        length: Number(data.items[0]?.item_length) || 10,
-        weight: totalWeight > 0 ? totalWeight : 0.1,
+        height: Number(items[0]?.item_height) || 10,
+        width: Number(items[0]?.item_width) || 10,
+        length: Number(items[0]?.item_length) || 10,
+        weight: totalWeight > 0 ? totalWeight : (Number(order.total_weight) || 0.3),
       },
     ],
     options: {
       insurance_value: totalValue,
-      receipt: false, // Alterado para false para evitar o custo extra indesejado de A.R.
+      receipt: false,
       own_hand: false,
       collect: false,
-      tags: [`ORDER-${data.orderId}`],
+      tags: [`ORDER-${order.id}`],
       platform: store.name,
     },
   };
@@ -86,7 +86,7 @@ export async function enviarParaCarrinhoMelhorEnvio(data: any) {
         "User-Agent": `${store.name} (${store.email})`,
       },
       body: JSON.stringify(payload),
-    },
+    }
   );
 
   const result = await response.json();
@@ -101,13 +101,12 @@ export async function enviarParaCarrinhoMelhorEnvio(data: any) {
     );
   }
 
-  // ATUALIZAÇÃO CRÍTICA: Salvando o protocol para garantir a vinculação no Webhook
   const { error: updateError } = await supabase
     .from("orders")
     .update({ 
       melhor_envio_protocol: result.protocol 
     })
-    .eq("id", data.orderId);
+    .eq("id", order.id);
 
   if (updateError) {
     console.error("Erro ao salvar protocolo no Supabase:", updateError);
