@@ -70,7 +70,6 @@ export default function ProfilePage() {
       }
 
       toast.success("Redirecionando para o checkout...");
-      // PASSAGEM DO ORDER_ID PARA NÃO CRIAR PEDIDO DUPLICADO
       router.push(`/checkout?order_id=${order.id}`);
     } catch (err) {
       toast.error("Erro ao redirecionar para o checkout. Tente novamente.");
@@ -94,7 +93,9 @@ export default function ProfilePage() {
       order.status === "Aguardando Pagamento";
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const orderLink = `${origin}${pathname}?order=${orderIdShort}`;
+    
+    // LINK AJUSTADO PARA O PAINEL ADMIN COM O FILTRO E A ANCORA #pedidos
+    const orderLink = `${origin}/admin?search=${orderIdShort}#pedidos`;
 
     const message = isPendingPayment
       ? `Olá! Gostaria de tirar uma dúvida sobre o meu *orçamento*.
@@ -102,7 +103,7 @@ export default function ProfilePage() {
 *Código do Orçamento:* #${orderIdShort}
 *Cliente:* ${userName}
 *Status:* ${order.status}
-*Link do orçamento:* ${orderLink}
+*Link do orçamento no painel:* ${orderLink}
 
 Poderia me ajudar?`
       : `Olá! Gostaria de tirar uma dúvida sobre o meu *pedido*.
@@ -110,7 +111,7 @@ Poderia me ajudar?`
 *Código do Pedido:* #${orderIdShort}
 *Cliente:* ${userName}
 *Status atual:* ${order.status}
-*Link do pedido:* ${orderLink}
+*Link do pedido no painel:* ${orderLink}
 
 Poderia me ajudar?`;
 
@@ -185,7 +186,7 @@ Poderia me ajudar?`;
                 loadingCheckoutId={loadingCheckoutId}
                 onCheckout={handleCheckoutPendingOrder}
                 onWhatsAppSupport={handleWhatsAppSupport}
-                 onRejectOrder={handleRejectQuote}
+                onRejectOrder={handleRejectQuote}
               />
             ))}
           </div>

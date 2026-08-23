@@ -24,16 +24,16 @@ export function useWhatsAppOrder() {
       })
       .join("\n");
 
-    // Constrói o link direto do pedido filtrado na tela de perfil do cliente
+    // LINK AJUSTADO PARA O PAINEL ADMIN DO DONO DA LOJA
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const orderLink = `${origin}/perfil?order=${productIdShort}`;
+    const orderLink = `${origin}/admin?search=${productIdShort}#pedidos`;
 
     const message = `Olá! Realizei o pagamento do pedido #${productIdShort} e preciso finalizar os detalhes personalizados dos seguintes itens:
 
 ${productsListText}
 
 *Cliente:* ${userName}
-*Link do pedido:* ${orderLink}
+*Link do pedido no painel:* ${orderLink}
 
 Poderia me ajudar com os detalhes da arte e produção?`;
 

@@ -70,10 +70,19 @@ export function OrderCardBody({
   const orderIdShort = order.id.substring(0, 8);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const orderLink = `${origin}/admin?search=${orderIdShort}#pedidos`;
+  // LINK PARA O CLIENTE (Admin fala com o cliente -> vai para o /perfil do cliente)
+  const orderLink = `${origin}/perfil?order=${orderIdShort}`;
 
-  const message = `Olá ${clientName}! Aqui é da ${storeName}. Estou entrando em contato sobre o seu pedido #${orderIdShort}.\n\nLink do pedido: ${orderLink}`;
-  const whatsappUrl = `https://wa.me/${order.shipping_phone?.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`;
+  // TRATAMENTO DO NÚMERO DO WHATSAPP
+  let rawPhone = (order.shipping_phone || order.phone || "").replace(/\D/g, "");
+  
+  // Se o número tiver 10 ou 11 dígitos (DDD + Número), adiciona o prefixo '55' do Brasil
+  if (rawPhone.length === 10 || rawPhone.length === 11) {
+    rawPhone = `55${rawPhone}`;
+  }
+
+  const message = `Olá ${clientName}! Aqui é da ${storeName}. Estou entrando em contato sobre o seu pedido #${orderIdShort}.\n\nLink do seu pedido: ${orderLink}`;
+  const whatsappUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(message)}`;
 
   return (
     <CardContent className="flex-1 p-3 sm:p-4 space-y-3 sm:space-y-4 text-[11px]">
