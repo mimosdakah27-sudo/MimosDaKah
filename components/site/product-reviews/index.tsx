@@ -31,6 +31,8 @@ export function ProductReviews({ productId, initialReviews }: Props) {
   const { user } = useAuth();
   const router = useRouter();
 
+  const [isPending, startTransition] = React.useTransition();
+
   const userReview = initialReviews.find((r) => r.user_id === user?.id);
 
   const [isEditing, setIsEditing] = React.useState(false);
@@ -67,7 +69,11 @@ export function ProductReviews({ productId, initialReviews }: Props) {
       });
 
       setIsEditing(false);
-      router.refresh();
+      
+      startTransition(() => {
+        router.refresh();
+      });
+
       toast.success(
         userReview
           ? "Avaliação atualizada com sucesso!"
@@ -89,7 +95,11 @@ export function ProductReviews({ productId, initialReviews }: Props) {
       setComment("");
       setIsEditing(false);
       setIsDeleteModalOpen(false);
-      router.refresh();
+
+      startTransition(() => {
+        router.refresh();
+      });
+
       toast.success("Avaliação removida com sucesso.");
     } catch (error: any) {
       toast.error(error.message || "Erro ao excluir avaliação");
@@ -101,6 +111,8 @@ export function ProductReviews({ productId, initialReviews }: Props) {
   const avg = initialReviews.length
     ? initialReviews.reduce((a, r) => a + r.rating, 0) / initialReviews.length
     : 0;
+
+  const isSubmitDisabled = loading || isPending || rating === 0;
 
   return (
     <div className="space-y-6 pt-4 border-t">
@@ -149,6 +161,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                   size="icon"
                   onClick={() => setIsEditing(true)}
                   title="Editar"
+                  disabled={loading || isPending}
                 >
                   <Edit2 className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -158,6 +171,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                   onClick={() => setIsDeleteModalOpen(true)}
                   title="Excluir"
                   className="text-destructive"
+                  disabled={loading || isPending}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -179,6 +193,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                       onMouseLeave={() => setHoverRating(0)}
                       className="p-1 transition-transform hover:scale-110"
                       aria-label={`Avaliar com ${n} estrelas`}
+                      disabled={loading || isPending}
                     >
                       <Star
                         className={`h-6 w-6 transition-colors ${n <= (hoverRating || rating) ? "fill-primary text-primary" : "text-muted fill-transparent"}`}
@@ -193,12 +208,14 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="O que você achou do produto? Compartilhe sua experiência..."
                 className="min-h-[100px] resize-none"
+                disabled={loading || isPending}
               />
 
               <div className="flex gap-2 justify-end">
                 {userReview && (
                   <Button
                     variant="outline"
+                    disabled={loading || isPending}
                     onClick={() => {
                       setIsEditing(false);
                       setRating(userReview.rating);
@@ -210,9 +227,9 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                 )}
                 <Button
                   onClick={handleSubmit}
-                  disabled={loading || rating === 0}
+                  disabled={isSubmitDisabled}
                 >
-                  {loading
+                  {loading || isPending
                     ? "Salvando..."
                     : userReview
                       ? "Salvar Alterações"
@@ -273,17 +290,17 @@ export function ProductReviews({ productId, initialReviews }: Props) {
               variant="outline"
               className="flex-1"
               onClick={() => setIsDeleteModalOpen(false)}
-              disabled={loading}
+              disabled={loading || isPending}
             >
               Cancelar
             </Button>
             <Button
               variant="destructive"
               className="flex-1"
-              disabled={loading}
+              disabled={loading || isPending}
               onClick={handleDelete}
             >
-              {loading ? "Excluindo..." : "Sim, excluir"}
+              {loading || isPending ? "Excluindo..." : "Sim, excluir"}
             </Button>
           </DialogFooter>
         </DialogContent>
