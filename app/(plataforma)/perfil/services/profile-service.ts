@@ -1,17 +1,40 @@
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { OrderWithItems } from "../types/profile-type";
 
+/**
+ * Busca os pedidos do cliente autenticado.
+ *
+ * Também carrega o tipo_venda do produto de cada item.
+ * Se pelo menos um produto tiver tipo_venda = "orcamento",
+ * o pedido será considerado um orçamento no perfil.
+ */
 export async function getUserOrders(
-  userId: string
+  userId: string,
 ): Promise<OrderWithItems[]> {
-  const { data, error } = await supabaseBrowser()
+  const supabase = supabaseBrowser();
+
+  const { data, error } = await supabase
     .from("orders")
-    .select("*, order_items(*)")
+    .select(`
+      *,
+      order_items (
+        *,
+        products (
+          tipo_venda
+        )
+      )
+    `)
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", {
+      ascending: false,
+    });
 
   if (error) {
-    console.error("Erro ao carregar pedidos:", error.message);
+    console.error(
+      "Erro ao carregar pedidos:",
+      error.message,
+    );
+
     throw error;
   }
 
@@ -21,10 +44,12 @@ export async function getUserOrders(
 /**
  * Recusa/exclui um orçamento.
  */
-export async function rejectQuote(orderId: string) {
+export async function rejectQuote(
+  orderId: string,
+) {
   const supabase = supabaseBrowser();
 
-  // Primeiro remove os itens do orçamento.
+  // Remove primeiro os itens do orçamento.
   const { error: itemsError } = await supabase
     .from("order_items")
     .delete()
@@ -33,13 +58,13 @@ export async function rejectQuote(orderId: string) {
   if (itemsError) {
     console.error(
       "Erro ao excluir itens do orçamento:",
-      itemsError.message
+      itemsError.message,
     );
 
     throw itemsError;
   }
 
-  // Depois remove o pedido/orçamento.
+  // Depois remove o pedido.
   const { error: orderError } = await supabase
     .from("orders")
     .delete()
@@ -48,7 +73,7 @@ export async function rejectQuote(orderId: string) {
   if (orderError) {
     console.error(
       "Erro ao excluir orçamento:",
-      orderError.message
+      orderError.message,
     );
 
     throw orderError;

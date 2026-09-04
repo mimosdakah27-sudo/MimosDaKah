@@ -1,9 +1,23 @@
 import type { Database } from "@/types/database";
 
-// Define a estrutura exata do relacionamento entre pedidos e itens buscados
-export type OrderItemRow = Database["public"]["Tables"]["order_items"]["Row"];
-export type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
+export type OrderItemRow =
+  Database["public"]["Tables"]["order_items"]["Row"];
 
-export interface OrderWithItems extends OrderRow {
-  order_items: OrderItemRow[];
+export type OrderRow =
+  Database["public"]["Tables"]["orders"]["Row"];
+
+export interface OrderItemWithProduct
+  extends OrderItemRow {
+  products?: {
+    tipo_venda:
+      | "normal"
+      | "orcamento"
+      | "whatsapp_finalizacao"
+      | null;
+  } | null;
+}
+
+export interface OrderWithItems
+  extends OrderRow {
+  order_items: OrderItemWithProduct[];
 }

@@ -40,7 +40,6 @@ export default function AdminPage() {
     const rawSearch = searchParams.get("search") ?? "";
     const cleanSearchFromUrl = rawSearch.replace(/#/g, "").trim();
 
-    // Se houver busca e não houver hash, vai para 'pedidos' por padrão
     if (cleanSearchFromUrl && !hash) {
       if (tab !== "pedidos") {
         setTab("pedidos");
@@ -54,7 +53,13 @@ export default function AdminPage() {
     if (cleanSearchFromUrl !== searchTerm) {
       setSearchTerm(cleanSearchFromUrl);
     }
-  }, [searchParams, searchTerm, tab, setSearchTerm, setTab]);
+  }, [
+    searchParams,
+    searchTerm,
+    tab,
+    setSearchTerm,
+    setTab,
+  ]);
 
   const handleTabChange = (newTab: "produtos" | "pedidos") => {
     setTab(newTab);
@@ -66,16 +71,16 @@ export default function AdminPage() {
       `/admin${queryString ? `?${queryString}` : ""}#${newTab}`,
       {
         scroll: false,
-      }
+      },
     );
   };
 
   /**
-   * Atualiza o termo de pesquisa e a URL simultaneamente.
-   * Permite que o usuário digite com '#' sem quebrar a busca.
+   * Atualiza a pesquisa e mantém o estado na URL.
    */
   const handleSearchChange = (value: string) => {
     const cleanValue = value.replace(/#/g, "").trim();
+
     setSearchTerm(cleanValue);
 
     const params = new URLSearchParams(searchParams.toString());
@@ -93,7 +98,7 @@ export default function AdminPage() {
       `/admin${queryString ? `?${queryString}` : ""}${currentHash}`,
       {
         scroll: false,
-      }
+      },
     );
   };
 
@@ -107,13 +112,12 @@ export default function AdminPage() {
           </h1>
 
           <p className="text-sm text-muted-foreground mt-0.5">
-            Gerencie o catálogo de produtos, fluxo de pedidos e orçamentos.
+            Gerencie o catálogo, pedidos, pagamentos e entregas da loja.
           </p>
         </div>
 
         {/* AÇÕES E ABAS PRINCIPAIS */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* BOTÃO PARA CRIAR ORÇAMENTO */}
           <CreateQuoteDialog />
 
           <div className="flex gap-2 bg-muted/40 p-1 rounded-xl border border-border/50">
@@ -140,11 +144,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* FILTROS E PESQUISA */}
+      {/* FILTROS */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/20 pb-4">
         {tab === "produtos" ? (
-          /* FILTROS DE PRODUTOS */
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold uppercase text-muted-foreground mr-2">
               Status:
             </span>
@@ -155,7 +158,11 @@ export default function AdminPage() {
               <Button
                 key={type}
                 size="sm"
-                variant={statusFilter === type ? "secondary" : "outline"}
+                variant={
+                  statusFilter === type
+                    ? "secondary"
+                    : "outline"
+                }
                 onClick={() => setStatusFilter(type)}
                 className="capitalize h-8 rounded-lg text-xs"
               >
@@ -164,33 +171,53 @@ export default function AdminPage() {
             ))}
           </div>
         ) : (
-          /* FILTROS DE PEDIDOS */
           <div className="flex flex-col gap-3 w-full">
             <div className="flex flex-wrap gap-2 w-full">
               {/* PESQUISA */}
               <Input
-                placeholder="Buscar por código do pedido (ID)..."
+                placeholder="Buscar por código do pedido..."
                 value={searchTerm}
-                onChange={(event) => handleSearchChange(event.target.value)}
+                onChange={(event) =>
+                  handleSearchChange(event.target.value)
+                }
                 className="w-full sm:max-w-xs rounded-xl h-9 text-sm"
               />
 
-              {/* STATUS */}
+              {/* STATUS DO PEDIDO */}
               <select
                 className="h-9 px-3 rounded-xl border border-input bg-background text-xs"
                 value={orderStatusFilter}
-                onChange={(event) => setOrderStatusFilter(event.target.value)}
+                onChange={(event) =>
+                  setOrderStatusFilter(event.target.value)
+                }
               >
-                <option value="todos">Todos os Status</option>
-                <option value="Aguardando Pagamento">
-                  Aguardando Pagamento (Orçamentos)
+                <option value="todos">
+                  Todos os Status
                 </option>
-                <option value="Em Preparação">Em Preparação</option>
-                <option value="pronto_para_retirada">Pronto p/ Retirada</option>
-                <option value="preparando_entrega">Preparando Entrega</option>
-                <option value="Etiqueta Paga">Etiqueta Paga</option>
-                <option value="Postado">Postado</option>
-                <option value="Entregue">Entregue</option>
+
+                <option value="Aguardando confirmação">
+                  Aguardando confirmação
+                </option>
+
+                <option value="Em preparação">
+                  Em preparação
+                </option>
+
+                <option value="Pronto para retirada">
+                  Pronto para retirada
+                </option>
+
+                <option value="Saiu para entrega">
+                  Saiu para entrega
+                </option>
+
+                <option value="Entregue">
+                  Entregue
+                </option>
+
+                <option value="Cancelado">
+                  Cancelado
+                </option>
               </select>
             </div>
 
@@ -198,10 +225,18 @@ export default function AdminPage() {
             <div className="flex gap-1 bg-muted/40 p-0.5 rounded-lg border border-border w-fit">
               <Button
                 size="sm"
-                variant={orderTab === "pendentes" ? "default" : "ghost"}
-                onClick={() => setOrderTab("pendentes")}
+                variant={
+                  orderTab === "pendentes"
+                    ? "default"
+                    : "ghost"
+                }
+                onClick={() =>
+                  setOrderTab("pendentes")
+                }
                 className={`h-8 rounded-md text-xs ${
-                  orderTab === "pendentes" ? "text-white" : ""
+                  orderTab === "pendentes"
+                    ? "text-white"
+                    : ""
                 }`}
               >
                 Ativos
@@ -209,10 +244,18 @@ export default function AdminPage() {
 
               <Button
                 size="sm"
-                variant={orderTab === "arquivados" ? "default" : "ghost"}
-                onClick={() => setOrderTab("arquivados")}
+                variant={
+                  orderTab === "arquivados"
+                    ? "default"
+                    : "ghost"
+                }
+                onClick={() =>
+                  setOrderTab("arquivados")
+                }
                 className={`h-8 rounded-md text-xs ${
-                  orderTab === "arquivados" ? "text-white" : ""
+                  orderTab === "arquivados"
+                    ? "text-white"
+                    : ""
                 }`}
               >
                 Arquivados

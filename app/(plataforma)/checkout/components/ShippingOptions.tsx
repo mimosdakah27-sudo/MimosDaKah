@@ -1,17 +1,34 @@
 "use client";
 
-import { AlertCircle, Settings } from "lucide-react";
-import Link from "next/link";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Truck,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { cn, formatBRL } from "@/lib/utils";
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group";
+
+import {
+  cn,
+  formatBRL,
+} from "@/lib/utils";
+
+export interface ShippingRate {
+  id: string;
+  price: number;
+  delivery_time?: number;
+}
 
 interface ShippingOptionsProps {
-  options: any[];
+  options: ShippingRate[];
   isLoading: boolean;
-  onSelect: (rate: any) => void;
+  onSelect: (rate: ShippingRate) => void;
   selectedId: string;
+  onBackToAddress?: () => void;
 }
 
 export function ShippingOptions({
@@ -19,102 +36,128 @@ export function ShippingOptions({
   isLoading,
   onSelect,
   selectedId,
+  onBackToAddress,
 }: ShippingOptionsProps) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[1, 2].map((i) => (
-          <div
-            key={i}
-            className="p-4 border border-border/60 rounded-2xl animate-pulse bg-secondary/40 h-20"
-          />
-        ))}
+      <div className="space-y-2">
+        <div className="h-14 animate-pulse rounded-xl border border-border/60 bg-secondary/40 p-2.5" />
       </div>
     );
   }
 
   const validOptions = Array.isArray(options)
-    ? options.filter((o) => o?.id !== undefined && o?.price !== undefined)
+    ? options.filter(
+        (option) =>
+          option?.id &&
+          option?.price !== undefined &&
+          option?.price !== null,
+      )
     : [];
 
   if (validOptions.length === 0) {
     return (
-      <div className="p-6 border border-amber-500/30 bg-amber-500/5 rounded-2xl text-center space-y-4">
-        <AlertCircle className="w-8 h-8 text-amber-600 mx-auto" />
-        <div>
-          <p className="font-bold text-foreground">Frete indisponível</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Verifique o CEP cadastrado ou utilize outro endereço.
+      <div className="space-y-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-center">
+        <AlertCircle className="mx-auto h-5 w-5 text-amber-600" />
+
+        <div className="space-y-0.5">
+          <p className="text-xs font-bold text-foreground">
+            Entrega indisponível
+          </p>
+
+          <p className="text-[10px] text-muted-foreground leading-tight">
+            Não foi possível calcular o valor da
+            entrega para o CEP informado.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={
-            <Link href="/endereco">
-              <Settings className="w-4 h-4 mr-2" /> Gerenciar endereços
-            </Link>
-          }
-          className="rounded-xl border-amber-500/30 hover:bg-amber-500/10"
-        />
+
+        {onBackToAddress && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onBackToAddress}
+            className="gap-1.5 h-7 text-[11px] rounded-lg border-amber-500/30 hover:bg-amber-500/10"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            Corrigir CEP / Endereço
+          </Button>
+        )}
       </div>
     );
   }
 
+  const rate = validOptions[0];
+
+  const rateId = String(rate.id);
+  const price = Number(rate.price) || 0;
+
+  const isSelected =
+    selectedId === rateId;
+
+  const handleSelect = () => {
+    onSelect(rate);
+  };
+
   return (
     <RadioGroup
       value={selectedId}
-      onValueChange={(id) => {
-        const selected = validOptions.find((o) => o.id === id);
-        if (selected) onSelect(selected);
-      }}
-      className="grid gap-3"
+      onValueChange={handleSelect}
+      className="grid gap-2 w-full"
     >
-      {validOptions.map((rate) => {
-        const isSelected = selectedId === rate.id;
-        const price = Number(rate.price);
+      <div
+        className={cn(
+          "relative flex cursor-pointer items-center justify-between rounded-xl border-2 bg-card p-2.5 transition-all w-full min-w-0 overflow-hidden",
+          isSelected
+            ? "border-primary bg-primary/5 shadow-sm"
+            : "border-border/60 hover:border-primary/40 hover:bg-secondary/40",
+        )}
+        onClick={handleSelect}
+      >
+        <RadioGroupItem
+          value={rateId}
+          id={`frete-calculado-${rateId}`}
+          className="sr-only"
+        />
 
-        const displayName =
-          rate.company?.name !== rate.name
-            ? `${rate.company?.name} - ${rate.name}`
-            : rate.name;
-
-        return (
+        <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
           <div
-            key={rate.id}
             className={cn(
-              "relative flex items-center p-4 border-2 rounded-2xl cursor-pointer transition-all bg-card",
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
               isSelected
-                ? "border-primary bg-primary/5 shadow-sm"
-                : "border-border/60 hover:border-primary/40 hover:bg-secondary/40",
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground",
             )}
-            onClick={() => onSelect(rate)}
           >
-            <RadioGroupItem value={rate.id} id={rate.id} className="mr-4" />
-
-            <label
-              htmlFor={rate.id}
-              className="flex-1 flex justify-between items-center cursor-pointer"
-            >
-              <div className="space-y-0.5">
-                <p className="font-bold text-sm text-foreground">{displayName}</p>
-                <p className="text-xs text-muted-foreground font-medium">
-                  {rate.delivery_time
-                    ? `Entrega em até ${typeof rate.delivery_time === "object" ? rate.delivery_time.max : rate.delivery_time} dias úteis`
-                    : "Prazo não informado"}
-                </p>
-              </div>
-
-              <div className="text-right">
-                <span className={cn("font-extrabold text-sm", price === 0 ? "text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-lg" : "text-foreground")}>
-                  {price === 0 ? "Grátis" : formatBRL(price)}
-                </span>
-              </div>
-            </label>
+            <Truck className="h-4 w-4" />
           </div>
-        );
-      })}
+
+          <div className="space-y-0.5 min-w-0 flex-1">
+            <p className="text-xs font-bold text-foreground truncate">
+              Entrega em outra cidade
+            </p>
+
+            <p className="text-[10px] font-medium text-muted-foreground truncate">
+              Valor calculado para o endereço
+            </p>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <span
+            className={cn(
+              "text-xs font-extrabold whitespace-nowrap",
+              price === 0
+                ? "rounded-md bg-emerald-500/10 px-2 py-0.5 text-emerald-600"
+                : "text-foreground",
+            )}
+          >
+            {price === 0
+              ? "Grátis"
+              : formatBRL(price)}
+          </span>
+        </div>
+      </div>
     </RadioGroup>
   );
 }

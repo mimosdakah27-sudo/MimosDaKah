@@ -108,7 +108,7 @@ export default function RootLayout({
               </TooltipProvider>
               <CartDrawer />
               <WhatsAppFab />
-              <Toaster richColors position="bottom-right" closeButton />
+              <Toaster richColors position="top-left" closeButton />
             </StoreProvider>
           </AuthProvider>
         </QueryProvider>

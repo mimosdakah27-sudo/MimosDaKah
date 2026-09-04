@@ -1,7 +1,11 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Archive, ArchiveRestore, MessageCircle } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  MessageCircle,
+} from "lucide-react";
 
 export function OrderCardActions({
   order,
@@ -16,7 +20,10 @@ export function OrderCardActions({
         variant="outline"
         className="h-8 text-[10px] flex-1 sm:flex-none"
         onClick={() =>
-          updateArchive({ id: order.id, is_archived: !order.is_archived })
+          updateArchive({
+            id: order.id,
+            is_archived: !order.is_archived,
+          })
         }
         disabled={isArchivePending}
       >
@@ -25,10 +32,13 @@ export function OrderCardActions({
         ) : (
           <Archive size={13} className="mr-1" />
         )}
-        {order.is_archived ? "Desarquivar" : "Arquivar"}
+
+        {order.is_archived
+          ? "Desarquivar"
+          : "Arquivar"}
       </Button>
 
-      {order.shipping_phone && (
+      {order.shipping_phone && whatsappUrl && (
         <a
           href={whatsappUrl}
           target="_blank"
@@ -40,7 +50,11 @@ export function OrderCardActions({
             variant="outline"
             className="h-8 text-[10px] w-full"
           >
-            <MessageCircle size={13} className="mr-1 text-emerald-600" />{" "}
+            <MessageCircle
+              size={13}
+              className="mr-1 text-emerald-600"
+            />
+
             WhatsApp
           </Button>
         </a>

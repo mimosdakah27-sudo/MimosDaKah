@@ -1,741 +1,266 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { isLocalZip, maskCPF } from "@/lib/utils";
-import {
-  AlertCircle,
-  Lock,
-  MapPin,
-  Plus,
-  ShieldCheck,
-  Truck,
-  User,
-} from "lucide-react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Edit2, MessageCircle, Loader2 } from "lucide-react";
 
 import { BackButton } from "@/components/site/back-button";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { RadioGroup } from "@/components/ui/radio-group";
-import { useAuth } from "@/hooks/use-auth";
-import { useStore } from "@/hooks/use-store";
-import { createCheckoutSession } from "@/lib/actions/checkout";
-import { useCart } from "@/lib/store/cart";
+import { Card, CardContent } from "@/components/ui/card";
+import { formatBRL } from "@/lib/utils";
 
-import { useAddress } from "../endereco/hooks/use-address";
-import { AddressCard } from "./components/AddressCard";
 import { OrderSummary } from "./components/OrderSummary";
-import { ShippingCard } from "./components/ShippingCard";
-import { ShippingOptions } from "./components/ShippingOptions";
+import { AddressStep } from "./components/steps/AddressStep";
+import { CustomerStep } from "./components/steps/CustomerStep";
+import { ShippingStep } from "./components/steps/ShippingStep";
 import { useCheckout } from "./hooks/use-checkout";
-import { useShipping } from "./hooks/use-shipping";
 
 export default function CheckoutPage() {
-  const router = useRouter();
-
-  const searchParams = useSearchParams();
-
-  /**
-   * Se veio de um orçamento,
-   * mantemos somente o ID.
-   *
-   * Os produtos NÃO são buscados novamente
-   * no banco.
-   *
-   * Os produtos vêm exclusivamente do Zustand.
-   */
-  const existingOrderId = searchParams.get("order_id");
-
-  const [step, setStep] = useState<"shipping" | "review">("shipping");
-
-  const [selectedRate, setSelectedRate] = useState<any>(null);
-
-  const [isStripeLoading, setIsStripeLoading] = useState(false);
-
-  /**
-   * Evita problemas de hidratação
-   * do Zustand persist.
-   */
-  const [isMounted, setIsMounted] = useState(false);
-
-  const { user } = useAuth();
-
-  const { addresses, activateAddress, isPending } = useAddress(user?.id || "");
-
-  const { form } = useCheckout();
-
-  const { config } = useStore();
-
-  /**
-   * ÚNICA fonte de verdade dos produtos.
-   */
-  const cartItems = useCart((state) => state.items);
-
-  const removeFromCart = useCart((state) => state.remove);
-
-  /**
-   * Hidratação do Zustand.
-   */
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  /**
-   * --------------------------------------------------
-   * ITENS DO CHECKOUT
-   * --------------------------------------------------
-   *
-   * Tanto compra normal quanto orçamento
-   * utilizam exatamente a mesma fonte:
-   *
-   * Zustand -> cartItems
-   */
-  const items = useMemo(() => {
-    return cartItems.map((item: any) => {
-      const product = item?.product || {};
-
-      return {
-        quantity: Number(item.quantity) || 1,
-
-        product: {
-          ...product,
-
-          id: String(product.id),
-
-          nome: product.nome || product.name || "Produto",
-
-          preco: Number(product.preco) || 0,
-
-          imagem_url: product.imagem_url,
-
-          /**
-           * Normaliza a variante.
-           */
-          variant_id: product.variant_id || undefined,
-
-          name: product.name || null,
-
-          tamanho: product.tamanho || null,
-
-          material: product.material || null,
-
-          /**
-           * Dados logísticos.
-           */
-          weight: Number(product.weight) || 0.3,
-
-          width: Number(product.width) || 10,
-
-          height: Number(product.height) || 10,
-
-          length: Number(product.length) || 10,
-        },
-      };
-    });
-  }, [cartItems]);
-
-  /**
-   * Se o carrinho estiver vazio,
-   * volta para a página anterior.
-   */
-  useEffect(() => {
-    if (isMounted && items.length === 0) {
-      router.back();
-    }
-  }, [isMounted, items.length, router]);
-
-  /**
-   * Subtotal dos produtos.
-   */
-  const subtotal = useMemo(() => {
-    return items.reduce(
-      (total, item) =>
-        total + Number(item.product?.preco || 0) * Number(item.quantity || 1),
-      0,
-    );
-  }, [items]);
-
-  /**
-   * Endereço ativo.
-   */
-  const activeAddress = useMemo(
-    () => addresses?.find((address: any) => address.active),
-    [addresses],
-  );
-
-  const hasNoAddress = !addresses || addresses.length === 0;
-
-  /**
-   * Verifica se o CEP é local.
-   */
-  const isLocal = useMemo(() => {
-    if (!activeAddress?.zip_code || !config?.zip_code) {
-      return false;
-    }
-
-    return isLocalZip(activeAddress.zip_code, config.zip_code);
-  }, [activeAddress?.zip_code, config?.zip_code]);
-
-  /**
-   * Preenche o formulário
-   * quando o endereço ativo muda.
-   */
-  useEffect(() => {
-    if (!activeAddress) {
-      return;
-    }
-
-    form.setValue("zip", activeAddress.zip_code, {
-      shouldValidate: true,
-    });
-
-    form.setValue("address", activeAddress.street, {
-      shouldValidate: true,
-    });
-
-    form.setValue("city", activeAddress.city, {
-      shouldValidate: true,
-    });
-  }, [
-    activeAddress?.id,
-    activeAddress?.zip_code,
-    activeAddress?.street,
-    activeAddress?.city,
-  ]);
-
-  /**
-   * Opções de frete.
-   *
-   * Recebe somente os itens atuais
-   * do carrinho.
-   */
-  const { data: shippingRates, isLoading } = useShipping(
-    config?.zip_code,
-    activeAddress?.zip_code,
+  const {
+    isMounted,
+    isSubmitting,
+    step,
+    changeStep,
+    customerData,
+    setCustomerData,
+    addressData,
+    setAddressData,
+    selectedRate,
+    setSelectedRate,
+    shippingRates,
+    isLoadingShipping,
+    storeConfig,
     items,
-  );
+    shippingPrice,
+    total,
+    handleFetchCep,
+    handleAddressNext,
+    handleFinalizeOrder,
+  } = useCheckout();
 
-  /**
-   * Opções de entrega local.
-   */
-  const localOptions = useMemo(() => {
-    if (!isLocal) {
-      return [];
-    }
-
-    const options: {
-      id: string;
-      name: string;
-      price: number;
-      delivery_time: string;
-      type: "pickup" | "local_delivery";
-    }[] = [];
-
-    if (config?.allow_local_pickup) {
-      options.push({
-        id: "pickup",
-        name: "Retirada na Loja",
-        price: 0,
-        delivery_time: "Imediato",
-        type: "pickup",
-      });
-    }
-
-    if (config?.allow_local_delivery) {
-      options.push({
-        id: "local",
-        name: "Entrega Própria",
-        price: config.local_delivery_fee || 18,
-        delivery_time: "1 dia útil",
-        type: "local_delivery",
-      });
-    }
-
-    return options;
-  }, [
-    isLocal,
-    config?.allow_local_pickup,
-    config?.allow_local_delivery,
-    config?.local_delivery_fee,
-  ]);
-
-  /**
-   * Total.
-   */
-  const total = useMemo(
-    () => Number(subtotal) + (Number(selectedRate?.price) || 0),
-    [subtotal, selectedRate?.price],
-  );
-
-  /**
-   * Verifica se o envio está completo.
-   */
-  const isShippingComplete =
-    !hasNoAddress && Boolean(selectedRate) && form.formState.isValid;
-
-  /**
-   * O próprio step representa
-   * se estamos na revisão.
-   */
-  const canOpenReview = isShippingComplete || step === "review";
-
-  /**
-   * Navegação das abas.
-   */
-  const handleTabClick = (targetStep: "shipping" | "review") => {
-    if (targetStep === "shipping") {
-      setStep("shipping");
-      return;
-    }
-
-    if (targetStep === "review" && canOpenReview) {
-      setStep("review");
-    }
-  };
-
-  /**
-   * Remove diretamente do Zustand.
-   */
-  const handleRemoveItem = (productId: string, variantId?: string) => {
-    removeFromCart(productId, variantId);
-  };
-
-  /**
-   * Evita renderizar antes
-   * da hidratação do Zustand.
-   */
   if (!isMounted) {
     return null;
   }
 
   return (
-    <div className="max-w-7xl mx-auto w-full">
+    <div className="w-full space-y-4">
       <BackButton />
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4 mb-8">
+      <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {step === "shipping" ? "Checkout Seguro" : "Revisão e Pagamento"}
+          <h1 className="text-xl font-bold tracking-tight">
+            Checkout
           </h1>
 
-          <p className="text-sm text-muted-foreground mt-1">
-            {step === "shipping"
-              ? "Confirme seu endereço e escolha a forma de envio"
-              : "Confira os dados antes de finalizar seu pedido"}
+          <p className="text-xs text-muted-foreground">
+            Preencha seus dados para finalizar o pedido
           </p>
         </div>
 
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border border-border self-start md:self-auto">
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border text-[11px] font-medium overflow-x-auto">
           <button
             type="button"
-            onClick={() => handleTabClick("shipping")}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              step === "shipping"
-                ? "bg-background text-foreground shadow-sm"
+            onClick={() => changeStep("customer")}
+            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
+              step === "customer"
+                ? "bg-background shadow-xs font-bold text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px]">
-              1
-            </span>
-
-            <span>Entrega</span>
+            1. Contato
           </button>
 
           <button
             type="button"
-            onClick={() => handleTabClick("review")}
-            disabled={!canOpenReview}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-              step === "review"
-                ? "bg-background text-foreground shadow-sm"
-                : canOpenReview
-                  ? "text-muted-foreground hover:text-foreground cursor-pointer"
-                  : "text-muted-foreground/40 cursor-not-allowed"
+            onClick={() => changeStep("address")}
+            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
+              step === "address"
+                ? "bg-background shadow-xs font-bold text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <span className="w-4 h-4 rounded-full bg-muted-foreground/20 flex items-center justify-center text-[10px]">
-              2
-            </span>
+            2. Endereço
+          </button>
 
-            <span>Revisão</span>
+          <button
+            type="button"
+            onClick={() => changeStep("shipping")}
+            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
+              step === "shipping"
+                ? "bg-background shadow-xs font-bold text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            3. Frete
+          </button>
+
+          <button
+            type="button"
+            onClick={() => changeStep("review")}
+            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
+              step === "review"
+                ? "bg-background shadow-xs font-bold text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            4. Revisão
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div className="lg:col-span-7 space-y-6 order-2 lg:order-1">
-          {step === "shipping" ? (
-            <div className="space-y-6">
-              {hasNoAddress ? (
-                <Card className="border-dashed border-2">
-                  <CardContent className="p-8 text-center flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground">
-                      <AlertCircle className="w-6 h-6" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="lg:col-span-7 space-y-4">
+          {step === "customer" && (
+            <CustomerStep
+              customerData={customerData}
+              setCustomerData={setCustomerData}
+              addressData={addressData}
+              onNext={() => changeStep("address")}
+            />
+          )}
+
+          {step === "address" && (
+            <AddressStep
+              addressData={addressData}
+              setAddressData={setAddressData}
+              customerData={customerData}
+              handleFetchCep={handleFetchCep}
+              onNext={handleAddressNext}
+              onBack={() => changeStep("customer")}
+            />
+          )}
+
+          {step === "shipping" && (
+            <ShippingStep
+              shippingRates={shippingRates}
+              isLoadingShipping={isLoadingShipping}
+              selectedRate={selectedRate}
+              setSelectedRate={setSelectedRate}
+              storeConfig={storeConfig}
+              destinationZip={addressData.zip_code}
+              onNext={() => changeStep("review")}
+              onBack={() => changeStep("address")}
+            />
+          )}
+
+          {step === "review" && (
+            <div className="space-y-3">
+              <Card>
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-xs">Resumo dos Dados</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-muted-foreground bg-muted/40 p-3 rounded-lg relative">
+                    <button
+                      type="button"
+                      onClick={() => changeStep("customer")}
+                      className="absolute top-2.5 right-2.5 text-[11px] text-primary hover:underline flex items-center gap-1 bg-background px-2 py-0.5 rounded border shadow-2xs"
+                    >
+                      <Edit2 className="w-3 h-3" />
+                      Editar
+                    </button>
+
+                    <div>
+                      <p className="font-semibold text-foreground">Contato:</p>
+                      <p>{customerData.name}</p>
+                      <p>{customerData.phone}</p>
+                      {customerData.email && <p>{customerData.email}</p>}
                     </div>
 
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-base">
-                        Nenhum endereço cadastrado
-                      </h3>
-
-                      <p className="text-sm text-muted-foreground">
-                        Você precisa cadastrar um endereço de entrega para
-                        prosseguir.
+                    <div>
+                      <p className="font-semibold text-foreground">Endereço:</p>
+                      <p>
+                        {addressData.street},{" "}
+                        {addressData.without_number
+                          ? "S/N"
+                          : `nº ${addressData.number}`}
                       </p>
+                      {addressData.complement && (
+                        <p>Complemento: {addressData.complement}</p>
+                      )}
+                      {addressData.neighborhood && (
+                        <p>Bairro: {addressData.neighborhood}</p>
+                      )}
+                      <p>
+                        {addressData.city} - {addressData.state} | CEP:{" "}
+                        {addressData.zip_code}
+                      </p>
+                      {addressData.reference && (
+                        <p>Ref: {addressData.reference}</p>
+                      )}
                     </div>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground border-t pt-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                    <span>
+                      Entrega:{" "}
+                      <strong className="text-foreground">
+                        {selectedRate?.type === "pickup"
+                          ? "Retirada na Loja"
+                          : selectedRate?.type === "local"
+                            ? "Entrega Própria"
+                            : selectedRate?.type === "other_city"
+                              ? "Envio para Outra Cidade"
+                              : "Frete Calculado"}
+                      </strong>
+                    </span>
+
+                    <span>
+                      Frete:{" "}
+                      <strong className="text-foreground">
+                        {formatBRL(shippingPrice)}
+                      </strong>
+                    </span>
+                  </div>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => changeStep("address")}
+                      className="flex-1 h-8 text-xs"
+                    >
+                      Alterar Endereço
+                    </Button>
 
                     <Button
-                      render={
-                        <Link href="/endereco">
-                          <Plus className="mr-2 w-4 h-4" />
-                          Cadastrar Endereço
-                        </Link>
-                      }
-                      className="rounded-md px-6"
-                    />
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-primary" />
-                      Endereço de Destino
-                    </h3>
-
-                    <AddressCard
-                      address={activeAddress}
-                      addresses={addresses}
-                      onSelect={(id: string) => activateAddress(id)}
-                      onActivate={activateAddress}
-                      isPending={isPending}
-                    />
+                      variant="outline"
+                      size="sm"
+                      onClick={() => changeStep("shipping")}
+                      className="flex-1 h-8 text-xs"
+                    >
+                      Alterar Entrega
+                    </Button>
                   </div>
-
-                  <Card>
-                    <CardContent className="p-6 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                          <User className="w-4 h-4" />
-                        </div>
-
-                        <div>
-                          <h3 className="font-semibold text-sm">
-                            Dados para Nota Fiscal
-                          </h3>
-
-                          <p className="text-xs text-muted-foreground">
-                            Obrigatório para emissão da NF-e
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground">
-                          CPF do Destinatário
-                        </label>
-
-                        <Input
-                          {...form.register("document", {
-                            onChange: (e) => {
-                              const masked = maskCPF(e.target.value);
-
-                              form.setValue("document", masked, {
-                                shouldValidate: true,
-                              });
-                            },
-                          })}
-                          placeholder="000.000.000-00"
-                          className={
-                            form.formState.errors.document
-                              ? "border-destructive"
-                              : ""
-                          }
-                        />
-
-                        {form.formState.errors.document && (
-                          <p className="text-xs text-destructive font-medium">
-                            {form.formState.errors.document.message}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <Truck className="w-4 h-4 text-primary" />
-                      Opções de Envio
-                    </h3>
-
-                    {isLocal ? (
-                      localOptions.length > 0 ? (
-                        <RadioGroup
-                          value={selectedRate?.id ?? ""}
-                          onValueChange={(id) =>
-                            setSelectedRate(
-                              localOptions.find((option) => option.id === id),
-                            )
-                          }
-                          className="space-y-3"
-                        >
-                          {localOptions.map((option) => (
-                            <ShippingCard key={option.id} {...option} />
-                          ))}
-                        </RadioGroup>
-                      ) : (
-                        <Card>
-                          <CardContent className="p-6 text-center space-y-4">
-                            <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
-                              <AlertCircle className="w-6 h-6 text-muted-foreground" />
-                            </div>
-
-                            <div>
-                              <h3 className="font-semibold">
-                                Frete não disponível
-                              </h3>
-
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Estamos na mesma região, mas não encontramos
-                                opções de entrega configuradas.
-                              </p>
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              render={() => (
-                                <Link href="/endereco">Revisar endereço</Link>
-                              )}
-                              className="w-full"
-                            />
-                          </CardContent>
-                        </Card>
-                      )
-                    ) : (
-                      <ShippingOptions
-                        options={shippingRates}
-                        isLoading={isLoading}
-                        onSelect={setSelectedRate}
-                        selectedId={selectedRate?.id ?? ""}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-
-              <div className="pt-2">
-                <Button
-                  disabled={!isShippingComplete || isPending}
-                  onClick={() => setStep("review")}
-                  className="w-full h-11 font-semibold"
-                >
-                  Continuar para Revisão
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardContent className="p-5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <MapPin size={16} className="text-primary" />
-                        Endereço de Entrega
-                      </h3>
-
-                      <button
-                        type="button"
-                        onClick={() => setStep("shipping")}
-                        className="text-xs font-medium text-primary hover:underline"
-                      >
-                        Alterar
-                      </button>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p className="font-medium text-foreground">
-                        {activeAddress?.street}
-                      </p>
-
-                      <p>
-                        {activeAddress?.city} - CEP: {activeAddress?.zip_code}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <Truck size={16} className="text-primary" />
-                        Envio e NF
-                      </h3>
-
-                      <button
-                        type="button"
-                        onClick={() => setStep("shipping")}
-                        className="text-xs font-medium text-primary hover:underline"
-                      >
-                        Alterar
-                      </button>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <p className="font-medium text-foreground">
-                        {selectedRate?.type === "pickup" ||
-                        selectedRate?.type === "local_delivery"
-                          ? "Entrega Local"
-                          : `${selectedRate?.company?.name} - ${selectedRate?.name}`}{" "}
-                        ({selectedRate?.delivery_time})
-                      </p>
-
-                      <p>
-                        CPF NF:{" "}
-                        <span className="font-mono text-foreground">
-                          {form.getValues("document")}
-                        </span>
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-1">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-
-                <span>
-                  Ambiente 100% seguro com criptografia de ponta a ponta
-                </span>
-              </div>
+                </CardContent>
+              </Card>
 
               <Button
-                className="w-full"
-                disabled={isStripeLoading}
-                onClick={async () => {
-                  if (isStripeLoading) {
-                    return;
-                  }
-
-                  setIsStripeLoading(true);
-
-                  /**
-                   * Os produtos enviados ao backend
-                   * vêm EXCLUSIVAMENTE do Zustand.
-                   *
-                   * Isso funciona para:
-                   *
-                   * 1. Compra normal
-                   * 2. Orçamento + carrinho existente
-                   *
-                   * O orderId identifica o orçamento,
-                   * mas não fornece os produtos.
-                   */
-                  const checkoutPayload = {
-                    /**
-                     * Mantém o ID do orçamento,
-                     * quando existir.
-                     */
-                    orderId: existingOrderId || null,
-
-                    /**
-                     * O backend consegue identificar
-                     * que esse checkout veio de um
-                     * orçamento através do orderId.
-                     */
-                    isQuote: Boolean(existingOrderId),
-
-                    /**
-                     * ÚNICA fonte dos produtos:
-                     * Zustand.
-                     */
-                    items: items.map((item: any) => ({
-                      ...item,
-
-                      product: {
-                        ...item.product,
-
-                        variant_id: item.product.variant_id || null,
-
-                        name: item.product.name || null,
-
-                        tamanho: item.product.tamanho || null,
-
-                        material: item.product.material || null,
-
-                        weight: Number(item.product.weight) || 0.3,
-
-                        width: Number(item.product.width) || 10,
-
-                        height: Number(item.product.height) || 10,
-
-                        length: Number(item.product.length) || 10,
-                      },
-                    })),
-
-                    /**
-                     * Dados do frete escolhido.
-                     */
-                    shipping: selectedRate,
-
-                    /**
-                     * Dados do cliente.
-                     */
-                    user: {
-                      id: user?.id,
-
-                      name: form.getValues("name"),
-
-                      email: form.getValues("email"),
-
-                      phone: form.getValues("phone"),
-
-                      document: form.getValues("document"),
-
-                      address: activeAddress?.street,
-
-                      city: activeAddress?.city,
-
-                      state: activeAddress?.state,
-
-                      zip: activeAddress?.zip_code,
-                    },
-                  };
-
-                  try {
-                    const { url } =
-                      await createCheckoutSession(checkoutPayload);
-
-                    if (url) {
-                      window.location.href = url;
-                    }
-                  } catch (error) {
-                    console.error("ERRO no Checkout:", error);
-
-                    setIsStripeLoading(false);
-                  }
-                }}
+                className="w-full h-9 text-xs font-semibold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                disabled={isSubmitting}
+                onClick={handleFinalizeOrder}
               >
-                <Lock className="w-4 h-4" />
-
-                {isStripeLoading
-                  ? "Processando pagamento..."
-                  : "Ir para o Pagamento Seguro"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Registrando pedido...
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4" />
+                    Confirmar e Finalizar Pedido
+                  </>
+                )}
               </Button>
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-5 lg:sticky lg:top-6 space-y-4 order-1 lg:order-2">
+        <div className="lg:col-span-5 lg:sticky lg:top-4">
           <OrderSummary
             items={items}
             shipping={selectedRate}
             total={total}
-            onRemoveItem={handleRemoveItem}
+            onRemoveItem={() => {}}
           />
         </div>
       </div>

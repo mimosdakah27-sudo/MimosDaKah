@@ -1,5 +1,15 @@
+// app/admin/configuracoes/page.tsx (ou o caminho equivalente da sua página de configurações)
+
 "use client";
 
+import {
+  formatBRL,
+  maskCEP,
+  maskPhone,
+  parseBRLToStringDigits,
+  parseDigitsToFloat,
+  unmask,
+} from "@/lib/utils";
 import {
   Building2,
   Globe,
@@ -19,7 +29,6 @@ import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { maskCEP, maskPhone, unmask } from "@/lib/utils";
 import { yupResolver } from "@hookform/resolvers/yup";
 
 import { useStoreConfig } from "./hooks/use-store-config";
@@ -34,11 +43,14 @@ export default function ConfiguracoesPage() {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<StoreConfig>({
     resolver: yupResolver(storeConfigSchema),
     mode: "onChange",
   });
+
+  const allowLocalDelivery = watch("allow_local_delivery");
 
   useEffect(() => {
     fetch("/api/melhor-envio/status", { cache: "no-store" })
@@ -161,6 +173,28 @@ export default function ConfiguracoesPage() {
                 </div>
               </Section>
             </div>
+
+            {/* Seção Informativa de Logística na Visualização */}
+            <div className="pt-6 border-t border-border/50 grid sm:grid-cols-2 gap-6">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Retirada na Loja
+                </p>
+                <p className="font-semibold text-sm mt-1">
+                  {config?.allow_local_pickup ? "Habilitado" : "Desabilitado"}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Entrega Própria (Local)
+                </p>
+                <p className="font-semibold text-sm mt-1">
+                  {config?.allow_local_delivery
+                    ? `Habilitado (Taxa: ${formatBRL(config?.fixed_delivery_fee ?? 0)})`
+                    : "Desabilitado"}
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <form
@@ -169,6 +203,7 @@ export default function ConfiguracoesPage() {
                 ...d,
                 phone: unmask(d.phone),
                 zip_code: unmask(d.zip_code),
+                fixed_delivery_fee: parseDigitsToFloat(d.fixed_delivery_fee),
               });
               setIsEditing(false);
             })}
@@ -178,7 +213,7 @@ export default function ConfiguracoesPage() {
               <h3 className="font-semibold flex items-center gap-2 text-primary text-sm uppercase tracking-wider">
                 <Truck size={16} /> Métodos de Entrega
               </h3>
-              <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted/30 rounded-xl">
+              <div className="flex flex-col sm:flex-row gap-6 p-4 bg-muted/30 rounded-xl items-start sm:items-center flex-wrap">
                 <Controller
                   name="allow_local_pickup"
                   control={control}
@@ -194,21 +229,60 @@ export default function ConfiguracoesPage() {
                     </label>
                   )}
                 />
-                <Controller
-                  name="allow_local_delivery"
-                  control={control}
-                  render={({ field: { onChange, value } }) => (
-                    <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
-                      <input
-                        type="checkbox"
-                        checked={!!value}
-                        onChange={(e) => onChange(e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                      Entrega Própria
-                    </label>
+
+                <div className="flex items-center gap-4 flex-wrap">
+                  <Controller
+                    name="allow_local_delivery"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                        <input
+                          type="checkbox"
+                          checked={!!value}
+                          onChange={(e) => {
+                            onChange(e.target.checked);
+                          }}
+                          className="h-4 w-4"
+                        />
+                        Entrega Própria
+                      </label>
+                    )}
+                  />
+
+                  {/* Input do valor fixo do frete local exibido condicionalmente */}
+                  {allowLocalDelivery && (
+                    <Controller
+                      name="fixed_delivery_fee"
+                      control={control}
+                      render={({ field: { onChange, value } }) => {
+                        const maskedValue = formatBRL(
+                          parseDigitsToFloat(value ?? 0),
+                        );
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Label
+                              htmlFor="fixed_delivery_fee"
+                              className="text-xs whitespace-nowrap text-muted-foreground"
+                            >
+                              Valor do Frete:
+                            </Label>
+                            <Input
+                              id="fixed_delivery_fee"
+                              value={maskedValue}
+                              onChange={(e) => {
+                                const digits = parseBRLToStringDigits(
+                                  e.target.value,
+                                );
+                                onChange(Number(digits) / 100);
+                              }}
+                              className="w-32 h-8 text-xs font-semibold"
+                            />
+                          </div>
+                        );
+                      }}
+                    />
                   )}
-                />
+                </div>
               </div>
             </div>
 
@@ -288,7 +362,7 @@ export default function ConfiguracoesPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="flex-1 p-2 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" />

@@ -1,28 +1,28 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { useStore } from "@/hooks/use-store";
-import { OrderCardHeader } from "./order-card-header";
 import { OrderCardBody } from "./order-card-body";
+import { OrderCardHeader } from "./order-card-header";
 
 export function OrderCard({
   order,
   updateStatus,
+  updatePaymentStatus,
   updateArchive,
   isStatusPending,
+  isPaymentStatusPending,
   isArchivePending,
 }: any) {
   const isPickup = order.shipping_type === "retirada";
-  const isLocal = order.shipping_type === "entrega_propria";
-  const isMelhorEnvio = !isPickup && !isLocal;
-
-  const { config } = useStore();
+  const isLocalDelivery =
+    order.shipping_type === "Entrega na cidade" ||
+    order.shipping_type === "entrega_propria";
 
   const shippingStyles = isPickup
     ? "border-purple-500/50 bg-purple-500/5"
-    : isLocal
+    : isLocalDelivery
       ? "border-emerald-500/50 bg-emerald-500/5"
-      : "border-border";
+      : "border-blue-500/30 bg-blue-500/5";
 
   return (
     <Card
@@ -31,15 +31,17 @@ export function OrderCard({
       <OrderCardHeader
         order={order}
         updateStatus={updateStatus}
+        updatePaymentStatus={updatePaymentStatus}
         isStatusPending={isStatusPending}
+        isPaymentStatusPending={isPaymentStatusPending}
       />
+
       <OrderCardBody
         order={order}
         isPickup={isPickup}
-        isMelhorEnvio={isMelhorEnvio}
+        isLocalDelivery={isLocalDelivery}
         updateArchive={updateArchive}
         isArchivePending={isArchivePending}
-        storeConfig={config}
       />
     </Card>
   );

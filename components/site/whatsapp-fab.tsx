@@ -31,7 +31,7 @@ export function WhatsAppFab() {
       href={`https://wa.me/55${cleanPhone}?text=${encodedMessage}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-300"
+      className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-[#25D366] opacity-70 backdrop-blur-md text-white flex items-center justify-center shadow-lg hover:opacity-100 hover:scale-110 transition-all duration-300"
       aria-label="WhatsApp"
     >
       <MessageCircle className="h-7 w-7" />

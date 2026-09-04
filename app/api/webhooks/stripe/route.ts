@@ -1,9 +1,9 @@
-import { headers } from "next/headers";
-import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { enviarParaCarrinhoMelhorEnvio } from "@/lib/actions/melhor-envio";
 import { revalidateProductFull } from "@/lib/actions/revalidate";
+import { stripe } from "@/lib/stripe/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   const body = await req.text();
@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!,
     );
   } catch (err: any) {
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
@@ -29,10 +29,14 @@ export async function POST(req: Request) {
     const orderId = metadata.orderId;
 
     try {
-      console.log(`[WEBHOOK STRIPE] Sessão concluída para o pedido ID: ${orderId}`);
+      console.log(
+        `[WEBHOOK STRIPE] Sessão concluída para o pedido ID: ${orderId}`,
+      );
 
       if (!orderId) {
-        console.error("[WEBHOOK STRIPE] orderId não encontrado nos metadados da sessão.");
+        console.error(
+          "[WEBHOOK STRIPE] orderId não encontrado nos metadados da sessão.",
+        );
         return new NextResponse("Order ID ausente", { status: 400 });
       }
 
@@ -43,11 +47,16 @@ export async function POST(req: Request) {
         .eq("id", orderId);
 
       if (updateError) {
-        console.error("Erro ao atualizar pagamento do pedido no Supabase:", updateError);
+        console.error(
+          "Erro ao atualizar pagamento do pedido no Supabase:",
+          updateError,
+        );
         throw new Error("Erro ao atualizar status do pedido");
       }
 
-      console.log(`[WEBHOOK STRIPE] Pedido ${orderId} atualizado para Pago com sucesso.`);
+      console.log(
+        `[WEBHOOK STRIPE] Pedido ${orderId} atualizado para Pago com sucesso.`,
+      );
 
       // 2. Buscar o pedido completo com os itens cadastrados no Supabase
       const { data: order, error: orderQueryError } = await supabaseAdmin
@@ -71,15 +80,27 @@ export async function POST(req: Request) {
       }
 
       // 3. INTEGRAÇÃO COM MELHOR ENVIO
-      if (order.shipping_type === "retirada" || order.shipping_type === "entrega_propria") {
-        console.log(`[WEBHOOK STRIPE] Pedido ${orderId} local. Nenhuma ação externa necessária.`);
+      if (
+        order.shipping_type === "retirada" ||
+        order.shipping_type === "Entrega na cidade"
+      ) {
+        console.log(
+          `[WEBHOOK STRIPE] Pedido ${orderId} local. Nenhuma ação externa necessária.`,
+        );
       } else {
-        console.log(`[WEBHOOK STRIPE] Enviando pedido ${orderId} para o carrinho do Melhor Envio...`);
+        console.log(
+          `[WEBHOOK STRIPE] Enviando pedido ${orderId} para o carrinho do Melhor Envio...`,
+        );
         try {
           await enviarParaCarrinhoMelhorEnvio(order);
-          console.log(`[WEBHOOK STRIPE] Item adicionado ao carrinho do Melhor Envio com sucesso!`);
+          console.log(
+            `[WEBHOOK STRIPE] Item adicionado ao carrinho do Melhor Envio com sucesso!`,
+          );
         } catch (integrationError) {
-          console.error("❌ Falha na integração com Melhor Envio:", integrationError);
+          console.error(
+            "❌ Falha na integração com Melhor Envio:",
+            integrationError,
+          );
           await supabaseAdmin
             .from("orders")
             .update({ status: "Erro de Integração" })

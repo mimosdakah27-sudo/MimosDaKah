@@ -1,8 +1,7 @@
-import { useState } from "react";
+"use client";
+
 import {
   CalendarDays,
-  CreditCard,
-  ExternalLink,
   HelpCircle,
   MapPin,
   MessageCircle,
@@ -10,6 +9,7 @@ import {
   Trash2,
   Truck,
 } from "lucide-react";
+import { useState } from "react";
 
 import {
   AlertDialog,
@@ -31,176 +31,234 @@ import {
 } from "@/components/ui/card";
 
 import { formatBRL } from "@/lib/utils";
-import { useCart } from "@/lib/store/cart";
 
 import { OrderProductItem } from "./OrderProductItem";
 
+interface StoreConfig {
+  name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
+  phone?: string | null;
+}
+
 interface OrderCardProps {
   order: any;
-  loadingCheckoutId: string | null;
-  onCheckout: (order: any) => void;
+  storeConfig?: StoreConfig | null;
   onWhatsAppSupport: (order: any) => void;
   onRejectOrder?: (orderId: string) => void;
 }
 
+const ORDER_STATUS_LABELS: Record<string, string> = {
+  "Aguardando confirmação": "Aguardando confirmação",
+  "Aguardando pagamento": "Aguardando confirmação",
+
+  aguarde: "Aguardando confirmação",
+
+  "Em preparação": "Em preparação",
+  "Em Preparação": "Em preparação",
+
+  "Pronto para retirada": "Pronto para retirada",
+  pronto_para_retirada: "Pronto para retirada",
+
+  "Preparando entrega": "Preparando entrega",
+  "Preparando Entrega": "Preparando entrega",
+
+  "Em rota de entrega": "Saiu para entrega",
+  "Saiu para entrega": "Saiu para entrega",
+
+  Entregue: "Entregue",
+
+  Cancelado: "Cancelado",
+};
+
+function getOrderStatusLabel(status?: string | null) {
+  if (!status) {
+    return "Aguardando confirmação";
+  }
+
+  return ORDER_STATUS_LABELS[status] || status;
+}
+
+function normalize(value?: string | null) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+function formatZip(zip?: string | null) {
+  const value = String(zip ?? "").replace(/\D/g, "");
+
+  if (value.length !== 8) {
+    return zip || "";
+  }
+
+  return `${value.slice(0, 5)}-${value.slice(5)}`;
+}
+
 export function OrderCard({
   order,
-  loadingCheckoutId,
-  onCheckout,
+  storeConfig,
   onWhatsAppSupport,
   onRejectOrder,
 }: OrderCardProps) {
-  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] =
+    useState(false);
 
   /**
-   * Verifica se o pedido é um orçamento.
+   * ORÇAMENTO
+   *
+   * O pedido inteiro é considerado orçamento quando
+   * pelo menos um dos produtos possui tipo_venda = "orcamento".
+   *
+   * O profile-service deve anexar tipo_venda diretamente
+   * em cada order_item.
    */
   const isQuote =
-    order.shipping_type === "orcamento";
+    Array.isArray(order.order_items) &&
+    order.order_items.some(
+      (item: any) =>
+        normalize(item.tipo_venda) === "orcamento",
+    );
 
   /**
-   * Verifica se o pedido ainda precisa
-   * ser pago.
+   * Modalidade.
    */
-  const isPendingPayment =
-    order.payment_status === "pending" ||
-    order.status === "Aguardando Pagamento";
-
-  /**
-   * Carrega os itens do orçamento para o carrinho.
-   *
-   * IMPORTANTE:
-   *
-   * O orçamento NÃO substitui o carrinho atual.
-   *
-   * Os itens existentes no carrinho são preservados
-   * e os itens do orçamento são adicionados através
-   * do addMany().
-   *
-   * O addMany() é responsável por evitar duplicações
-   * conforme a lógica definida na store.
-   */
-  const handleLoadQuoteToCart = () => {
-  console.log("ORÇAMENTO COMPLETO:", order);
-  console.log("ITENS DO ORÇAMENTO:", order.order_items);
-
-  if (
-    !Array.isArray(order.order_items) ||
-    order.order_items.length === 0
-  ) {
-    onCheckout(order);
-    return;
-  }
-
-  const quoteItems = order.order_items.map(
-    (item: any) => {
-      console.log("ITEM DO ORÇAMENTO:", {
-        id: item.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        product_name: item.product_name,
-      });
-
-      // restante...
-    }
+  const shippingType = normalize(
+    order.shipping_type,
   );
 
-  console.log("ITENS QUE SERÃO ADICIONADOS:", quoteItems);
+  const shippingServiceId = normalize(
+    order.shipping_service_id,
+  );
 
-  useCart.getState().addMany(quoteItems);
+  const isPickup =
+    shippingType === "retirada" ||
+    shippingServiceId === "pickup";
 
-  onCheckout(order);
-};
+  const isLocalDelivery =
+    shippingType === "entrega na cidade" ||
+    shippingType === "entrega própria" ||
+    shippingType === "entrega_propria" ||
+    shippingServiceId === "local";
 
-  const getLogisticsMessage = (
-    status: string,
-    shippingType: string
-  ) => {
-    if (shippingType === "orcamento") {
-      return "Orçamento pronto! Finalize o pagamento para definir os detalhes de envio.";
+  const isOtherCity =
+    shippingType === "entrega em outra cidade" ||
+    shippingType === "outra_cidade" ||
+    shippingType === "melhor_envio" ||
+    shippingServiceId === "outra_cidade" ||
+    shippingServiceId === "frete_calculado";
+
+  /**
+   * O orçamento tem prioridade.
+   */
+  const orderTypeLabel = isQuote
+    ? "Orçamento"
+    : isPickup
+      ? "Retirada na Loja"
+      : isLocalDelivery
+        ? "Entrega Própria"
+        : isOtherCity
+          ? "Entrega"
+          : "Pedido";
+
+  /**
+   * Endereço da loja.
+   */
+  const storeAddressParts = [
+    storeConfig?.address,
+    storeConfig?.city,
+    storeConfig?.state,
+  ].filter(Boolean);
+
+  const storeAddress = storeAddressParts.join(" - ");
+
+  const storeZip = formatZip(
+    storeConfig?.zip_code,
+  );
+
+  /**
+   * Mensagem de acompanhamento.
+   */
+  const getLogisticsMessage = () => {
+    const status = order.status || "";
+
+    if (status === "Cancelado") {
+      return isQuote
+        ? "Este orçamento foi cancelado."
+        : "Este pedido foi cancelado.";
     }
 
-    if (shippingType === "retirada") {
+    if (status === "Entregue") {
+      return "Seu pedido foi entregue com sucesso.";
+    }
+
+    if (isQuote) {
+      return "Seu orçamento foi recebido. Fale com a loja para combinar os próximos detalhes.";
+    }
+
+    if (isPickup) {
       switch (status) {
-        case "Aguardando Pagamento":
-          return "Aguardando confirmação do pagamento.";
-
-        case "Em Preparação":
-          return "Seu produto está sendo preparado.";
-
+        case "Pronto para retirada":
         case "pronto_para_retirada":
-          return "Seu produto está pronto para retirada.";
+          return "Seu pedido está pronto para retirada na loja.";
 
-        case "Preparando Entrega":
-          return "Estamos organizando os últimos detalhes para a retirada.";
+        case "Em preparação":
+        case "Em Preparação":
+          return "Seu pedido está sendo preparado.";
 
-        case "Etiqueta Paga":
-          return "Pagamento confirmado. Aguardando separação.";
-
-        case "Postado":
-          return "Pedido separado para retirada.";
-
-        case "Entregue":
-          return "Seu produto foi entregue com sucesso.";
+        case "Aguardando confirmação":
+        case "Aguardando pagamento":
+        case "aguarde":
+          return "Seu pedido foi recebido e aguarda confirmação da loja.";
 
         default:
-          return "Aguardando atualizações do status.";
+          return "Acompanhe aqui as atualizações do seu pedido.";
       }
     }
 
-    if (shippingType === "entrega_propria") {
+    if (isLocalDelivery) {
       switch (status) {
-        case "Aguardando Pagamento":
-          return "Aguardando confirmação do pagamento.";
-
+        case "Em preparação":
         case "Em Preparação":
-          return "Seu produto está sendo preparado.";
+          return "Seu pedido está sendo preparado.";
 
-        case "pronto_para_retirada":
-          return "Pedido pronto.";
-
+        case "Preparando entrega":
         case "Preparando Entrega":
-          return "Seu produto está sendo preparado e logo sairá para entrega.";
+          return "Seu pedido está sendo preparado para entrega.";
 
-        case "Etiqueta Paga":
-          return "Pagamento confirmado.";
+        case "Em rota de entrega":
+        case "Saiu para entrega":
+          return "Seu pedido saiu para entrega.";
 
-        case "Postado":
-          return "Pedido a caminho com o entregador.";
-
-        case "Entregue":
-          return "Seu produto foi entregue com sucesso.";
+        case "Aguardando confirmação":
+        case "Aguardando pagamento":
+        case "aguarde":
+          return "Seu pedido foi recebido e aguarda confirmação da loja.";
 
         default:
-          return "Seu produto está sendo preparado.";
+          return "Acompanhe aqui as atualizações do seu pedido.";
       }
     }
 
-    switch (status) {
-      case "Aguardando Pagamento":
-        return "Aguardando confirmação do pagamento.";
+    if (isOtherCity) {
+      switch (status) {
+        case "Em preparação":
+        case "Em Preparação":
+          return "Seu pedido está sendo preparado.";
 
-      case "Em Preparação":
-        return "Seu produto está sendo preparado.";
+        case "Aguardando confirmação":
+        case "Aguardando pagamento":
+        case "aguarde":
+          return "Seu pedido foi recebido e aguarda confirmação da loja.";
 
-      case "Preparando Entrega":
-        return "Preparando pacote para envio.";
-
-      case "pronto_para_retirada":
-        return "Seu produto está pronto para retirada.";
-
-      case "Etiqueta Paga":
-        return "Etiqueta gerada, aguardando postagem.";
-
-      case "Postado":
-        return "Seu pedido foi postado na transportadora.";
-
-      case "Entregue":
-        return "Seu produto foi entregue com sucesso.";
-
-      default:
-        return "Acompanhe o rastreio do seu envio abaixo.";
+        default:
+          return "Acompanhe aqui as atualizações do seu pedido.";
+      }
     }
+
+    return "Acompanhe aqui as atualizações do seu pedido.";
   };
 
   const handleConfirmReject = () => {
@@ -208,265 +266,295 @@ export function OrderCard({
     onRejectOrder?.(order.id);
   };
 
+  const subtotal =
+    Number(order.total || 0) -
+    Number(order.shipping_cost || 0);
+
   return (
     <>
-      <Card
-        className={`overflow-hidden transition-all ${
-          isPendingPayment
-            ? "border-amber-500/50 shadow-sm"
-            : ""
-        }`}
-      >
-        <CardHeader
-          className={
-            isPendingPayment
-              ? "bg-amber-500/10 border-b border-amber-500/20"
-              : "bg-muted/30 border-b"
-          }
-        >
+      <Card className="overflow-hidden transition-all">
+        {/* =====================================================
+            CABEÇALHO
+        ====================================================== */}
+
+        <CardHeader className="bg-muted/30 border-b">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
                 <CardTitle className="text-lg">
-                  Pedido #
+                  {isQuote ? "Orçamento" : "Pedido"} #
                   {order.id.slice(0, 8)}
                 </CardTitle>
 
-                {isQuote && (
-                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5">
-                    🏷️ Orçamento
-                  </Badge>
-                )}
+                <Badge
+                  className={
+                    isQuote
+                      ? "bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5"
+                      : "text-[10px] uppercase tracking-wider font-bold"
+                  }
+                >
+                  {orderTypeLabel}
+                </Badge>
               </div>
 
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" />
 
                 {new Date(
-                  order.created_at
+                  order.created_at,
                 ).toLocaleDateString("pt-BR")}
               </p>
             </div>
 
             <Badge
-              variant={
-                isPendingPayment
-                  ? "outline"
-                  : "default"
-              }
-              className={`rounded-md uppercase tracking-wider font-extrabold text-[10px] px-3 py-1 ${
-                isPendingPayment
-                  ? "border-amber-500 text-amber-600 bg-amber-500/10"
-                  : ""
-              }`}
+              variant="outline"
+              className="rounded-md uppercase tracking-wider font-extrabold text-[10px] px-3 py-1"
             >
-              {order.status}
+              {getOrderStatusLabel(order.status)}
             </Badge>
           </div>
         </CardHeader>
 
         <CardContent className="pt-6 space-y-6">
-          {isPendingPayment && (
+          {/* =================================================
+              ORÇAMENTO
+          ================================================== */}
+
+          {isQuote && (
             <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
               <HelpCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
 
               <div className="space-y-0.5 text-xs">
                 <p className="font-bold text-amber-700 dark:text-amber-400">
-                  {isQuote
-                    ? "Orçamento pronto para pagamento!"
-                    : "Aguardando confirmação do pagamento"}
+                  Este pedido é um orçamento
                 </p>
 
                 <p className="text-muted-foreground">
-                  {isQuote
-                    ? 'O valor deste produto/serviço foi definido pela loja. Clique em "Pagar e Finalizar Pedido" para ir ao checkout e concluir sua compra.'
-                    : "Clique abaixo para prosseguir com o pagamento e finalizar seu pedido."}
+                  A loja irá analisar os produtos
+                  solicitados e entrar em contato para
+                  informar os detalhes e o valor final.
                 </p>
               </div>
             </div>
           )}
+
+          {/* =================================================
+              PRODUTOS
+          ================================================== */}
 
           <div className="space-y-3">
             <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
               Produtos
             </h4>
 
-            {order.order_items?.map(
-              (item: any) => (
-                <OrderProductItem
-                  key={item.id}
-                  item={item}
-                />
-              )
-            )}
+            {order.order_items?.map((item: any) => (
+              <OrderProductItem
+                key={item.id}
+                item={item}
+              />
+            ))}
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
-            {/* Informações de Entrega */}
+            {/* =================================================
+                ENTREGA / RETIRADA
+            ================================================== */}
+
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-bold text-foreground">
                 <Truck className="h-4 w-4 text-primary" />
-                Informações de Entrega
+                {isPickup
+                  ? "Informações de Retirada"
+                  : "Informações de Entrega"}
               </div>
 
-              <div className="bg-muted/40 p-3 rounded-lg text-xs text-muted-foreground space-y-2 border">
+              <div className="bg-muted/40 p-3 rounded-lg text-xs text-muted-foreground space-y-3 border">
                 <p className="font-bold text-foreground">
-                  {order.shipping_type ===
-                  "retirada"
-                    ? "Retirada na Loja"
-                    : order.shipping_type ===
-                        "entrega_propria"
-                      ? "Entrega Própria da Loja"
-                      : order.shipping_type ===
-                          "orcamento"
-                        ? "A definir no Checkout (Orçamento)"
-                        : "Envio por Transportadora"}
+                  {orderTypeLabel}
                 </p>
 
-                {order.shipping_type !==
-                  "retirada" && (
-                  <p className="flex items-start gap-2">
-                    <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                {/* =================================================
+                    RETIRADA NA LOJA
+                ================================================== */}
 
-                    {order.shipping_address},{" "}
-                    {order.shipping_city}
-                  </p>
-                )}
+                {isPickup && !isQuote && (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border bg-background p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary shrink-0" />
 
-                {order.shipping_type ===
-                "melhor_envio" ? (
-                  order.tracking_code ? (
-                    <a
-                      href={`https://www.melhorrastreio.com.br/rastreio/${order.tracking_code}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-1 text-primary font-bold hover:underline"
-                    >
-                      Rastrear:{" "}
-                      {order.tracking_code}{" "}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ) : (
-                    <p className="font-semibold text-amber-600">
-                      Esperando código de rastreio
+                        <p className="font-bold text-foreground">
+                          Local de retirada
+                        </p>
+                      </div>
+
+                      {storeAddress ? (
+                        <div className="pl-6 space-y-0.5">
+                          <p className="text-foreground">
+                            {storeAddress}
+                          </p>
+
+                          {storeZip && (
+                            <p>
+                              CEP {storeZip}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="pl-6">
+                          Consulte a loja para confirmar
+                          o endereço de retirada.
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="text-muted-foreground">
+                      Precisa da localização exata da
+                      loja? Fale conosco pelo WhatsApp
+                      e peça a localização.
                     </p>
-                  )
-                ) : (
-                  <p
-                    className={`font-semibold ${
-                      order.status ===
-                      "Pronto p/ Retirada"
-                        ? "text-emerald-600 dark:text-emerald-400 text-sm font-bold"
-                        : "text-primary"
-                    }`}
-                  >
-                    {getLogisticsMessage(
-                      order.status,
-                      order.shipping_type
-                    )}
-                  </p>
+                  </div>
                 )}
 
-                <div className="pt-2">
+                {/* =================================================
+                    ENDEREÇO DE ENTREGA
+                ================================================== */}
+
+                {!isPickup &&
+                  !isQuote &&
+                  order.shipping_address && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+
+                      <span>
+                        {order.shipping_address}
+
+                        {order.shipping_number &&
+                          `, ${order.shipping_number}`}
+
+                        {order.shipping_neighborhood &&
+                          ` - ${order.shipping_neighborhood}`}
+
+                        {order.shipping_city &&
+                          `, ${order.shipping_city}`}
+
+                        {order.shipping_state &&
+                          ` - ${order.shipping_state}`}
+
+                        {order.shipping_zip &&
+                          ` - CEP ${formatZip(
+                            order.shipping_zip,
+                          )}`}
+                      </span>
+                    </div>
+                  )}
+
+                <p className="font-semibold text-primary">
+                  {getLogisticsMessage()}
+                </p>
+
+                <div className="pt-1">
                   <Button
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      onWhatsAppSupport(
-                        order
-                      )
+                      onWhatsAppSupport(order)
                     }
-                    className="w-full text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-950/40 font-semibold text-xs h-8"
+                    className="w-full text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-950/40 font-semibold text-xs h-9"
                   >
                     <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
 
                     {isQuote
-                      ? "Falar sobre este orçamento no WhatsApp"
-                      : "Falar sobre este pedido no WhatsApp"}
+                      ? "Falar sobre este orçamento"
+                      : isPickup
+                        ? "Pedir localização e falar com a loja"
+                        : "Falar sobre este pedido"}
                   </Button>
                 </div>
               </div>
             </div>
 
-            {/* Resumo Financeiro */}
+            {/* =================================================
+                RESUMO
+            ================================================== */}
+
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-sm font-bold text-foreground">
                 <ReceiptText className="h-4 w-4 text-primary" />
-                Resumo Financeiro
+                Resumo do Pedido
               </div>
 
               <div className="space-y-3 p-3 bg-card border rounded-lg">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Subtotal</span>
+                {isQuote ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Valor</span>
 
-                    <span>
-                      {formatBRL(
-                        Number(order.total) -
-                          Number(
-                            order.shipping_cost ||
-                              0
-                          )
-                      )}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Frete</span>
-
-                    <span>
-                      {order.shipping_cost
-                        ? formatBRL(
-                            Number(
-                              order.shipping_cost
+                      <span>
+                        {Number(order.total || 0) > 0
+                          ? formatBRL(
+                              Number(order.total),
                             )
-                          )
-                        : "A calcular"}
-                    </span>
+                          : "A definir"}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        O valor final será informado pela
+                        loja após a análise do orçamento.
+                      </p>
+                    </div>
                   </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Subtotal</span>
 
-                  <div className="flex justify-between text-base font-bold text-foreground pt-2 border-t">
-                    <span>Total</span>
+                      <span>
+                        {formatBRL(subtotal)}
+                      </span>
+                    </div>
 
-                    <span className="text-primary">
-                      {formatBRL(
-                        Number(order.total)
-                      )}
-                    </span>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Entrega</span>
+
+                      <span>
+                        {Number(
+                          order.shipping_cost || 0,
+                        ) > 0
+                          ? formatBRL(
+                              Number(
+                                order.shipping_cost,
+                              ),
+                            )
+                          : "Grátis"}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-base font-bold text-foreground pt-2 border-t">
+                      <span>Total</span>
+
+                      <span className="text-primary">
+                        {formatBRL(
+                          Number(order.total || 0),
+                        )}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {isPendingPayment && (
-                  <div className="space-y-2 mt-2">
-                    <Button
-                      onClick={
-                        handleLoadQuoteToCart
-                      }
-                      disabled={
-                        loadingCheckoutId ===
-                        order.id
-                      }
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm gap-2"
-                    >
-                      <CreditCard className="h-4 w-4" />
-
-                      {loadingCheckoutId ===
-                      order.id
-                        ? "Redirecionando..."
-                        : "Pagar e Finalizar Pedido"}
-                    </Button>
-
-                    {isQuote && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setShowRejectModal(true)}
-                        className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/50 dark:hover:bg-red-950/40 text-xs font-semibold h-9 gap-1.5"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Recusar Orçamento
-                      </Button>
-                    )}
-                  </div>
+                {isQuote && onRejectOrder && (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setShowRejectModal(true)
+                    }
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/50 dark:hover:bg-red-950/40 text-xs font-semibold h-9 gap-1.5"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Recusar Orçamento
+                  </Button>
                 )}
               </div>
             </div>
@@ -474,17 +562,32 @@ export function OrderCard({
         </CardContent>
       </Card>
 
-      {/* Modal de confirmação ao recusar o orçamento */}
-      <AlertDialog open={showRejectModal} onOpenChange={setShowRejectModal}>
+      {/* =======================================================
+          MODAL DE RECUSA
+      ======================================================== */}
+
+      <AlertDialog
+        open={showRejectModal}
+        onOpenChange={setShowRejectModal}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Recusar Orçamento?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Recusar Orçamento?
+            </AlertDialogTitle>
+
             <AlertDialogDescription>
-              Tem certeza que deseja recusar este orçamento (#{order.id.slice(0, 8)})? Esta ação não poderá ser desfeita.
+              Tem certeza que deseja recusar este
+              orçamento (#{order.id.slice(0, 8)})?
+              Esta ação não poderá ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>
+              Cancelar
+            </AlertDialogCancel>
+
             <AlertDialogAction
               onClick={handleConfirmReject}
               className="bg-red-600 hover:bg-red-700 text-white font-semibold"

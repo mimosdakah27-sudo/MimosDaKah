@@ -1,5 +1,6 @@
-// page.tsx (SuccessPage)
-import { CheckCircle2, ShoppingBag } from "lucide-react";
+// app/checkout/success/page.tsx
+
+import { CheckCircle2, Home, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
 
 import { ClearCartTrigger } from "@/components/site/clear-cart-trigger";
@@ -12,35 +13,40 @@ import { getOrderDetails } from "./services/order-service";
 interface SuccessPageProps {
   searchParams: Promise<{
     order_id?: string;
-    session_id?: string;
   }>;
 }
 
-export default async function SuccessPage({ searchParams }: SuccessPageProps) {
+export default async function SuccessPage({
+  searchParams,
+}: SuccessPageProps) {
   const params = await searchParams;
   const orderId = params.order_id;
-  const sessionId = params.session_id;
-
-  console.log("Debug - searchParams recebidos:", { orderId, sessionId });
 
   if (!orderId) {
-    console.log("Debug - order_id não encontrado na URL!");
     return (
-      <div className="mx-auto max-w-md px-4 py-12 text-center">
+      <div className="w-full max-w-sm mx-auto px-2">
         <Card>
-          <CardContent className="pt-10 pb-8 space-y-4">
-            <h1 className="text-xl font-bold text-foreground">
-              Pedido não encontrado
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Não conseguimos identificar o ID do pedido. (Session ID recebido:{" "}
-              {sessionId || "Nenhum"})
-            </p>
+          <CardContent className="pt-6 pb-6 text-center space-y-4">
+            <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+              <MessageCircle className="h-6 w-6 text-muted-foreground" />
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="text-lg font-bold text-foreground">
+                Pedido não encontrado
+              </h1>
+
+              <p className="text-xs text-muted-foreground">
+                Não conseguimos identificar o pedido. Volte para a loja e
+                tente novamente.
+              </p>
+            </div>
+
             <Button
               render={<Link href="/">Voltar para a loja</Link>}
               nativeButton={false}
-              className="w-full"
-            ></Button>
+              className="w-full h-9 text-xs"
+            />
           </CardContent>
         </Card>
       </div>
@@ -51,87 +57,120 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
 
   if (!order) {
     return (
-      <div className="mx-auto max-w-md px-4 py-12 text-center">
+      <div className="w-full max-w-sm mx-auto px-2">
         <Card>
-          <CardContent className="pt-10 pb-8 space-y-4">
-            <h1 className="text-xl font-bold text-foreground">
-              Pedido não localizado
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              O pedido com ID{" "}
-              <span className="font-mono text-xs">{orderId}</span> não foi
-              encontrado em nosso sistema.
-            </p>
+          <CardContent className="pt-6 pb-6 text-center space-y-4">
+            <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+              <MessageCircle className="h-6 w-6 text-muted-foreground" />
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="text-lg font-bold text-foreground">
+                Pedido não localizado
+              </h1>
+
+              <p className="text-xs text-muted-foreground">
+                Não encontramos este pedido em nosso sistema.
+              </p>
+            </div>
+
             <Button
               render={<Link href="/">Voltar para a loja</Link>}
               nativeButton={false}
-              className="w-full"
-            ></Button>
+              className="w-full h-9 text-xs"
+            />
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Verifica se algum item exige finalização via WhatsApp
-  const whatsappItems =
-    order.order_items?.filter(
-      (item: any) =>
-        item.tipo_venda === "whatsapp_finalizacao" ||
-        item.product?.tipo_venda === "whatsapp_finalizacao",
-    ) || [];
-
-  const hasWhatsappItems = whatsappItems.length > 0;
+  const orderItems = order.order_items || [];
+  const orderShortId = orderId.substring(0, 8).toUpperCase();
 
   return (
-    <div className="mx-auto max-w-md px-4 py-12">
+    <div className="w-full max-w-sm mx-auto px-2 py-2">
       <ClearCartTrigger />
 
-      <Card>
-        <CardContent className="pt-10 pb-8 text-center flex flex-col items-center">
-          <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-6">
-            <CheckCircle2 className="h-8 w-8 text-primary" />
+      <Card className="overflow-hidden shadow-sm">
+        <CardContent className="pt-5 pb-5 px-4 text-center">
+          {/* Ícone */}
+          <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+            <CheckCircle2 className="h-6 w-6 text-primary" />
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight">
-            Pedido Confirmado!
+          {/* Título */}
+          <h1 className="text-lg font-bold tracking-tight">
+            Pedido recebido!
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Seu pagamento foi processado com sucesso.
+
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+            Seu pedido foi registrado com sucesso. Envie-o pelo WhatsApp para
+            combinar os detalhes diretamente com a loja.
           </p>
 
-          {hasWhatsappItems ? (
-            <div className="mt-6 w-full p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-3">
-              <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                Este pedido contém itens personalizados que exigem finalização
-                no WhatsApp:
+          {/* Número do pedido */}
+          <div className="mt-3 inline-flex items-center rounded-full bg-muted px-2.5 py-1">
+            <span className="text-[11px] text-muted-foreground mr-1">
+              Pedido
+            </span>
+
+            <span className="text-[11px] font-bold font-mono">
+              #{orderShortId}
+            </span>
+          </div>
+
+          {/* WhatsApp */}
+          <div className="mt-4 w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 space-y-2.5">
+            <div className="flex items-center justify-center gap-1.5">
+              <MessageCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+
+              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                Envie seu pedido pelo WhatsApp
               </p>
-              <WhatsAppActionButton
-                products={whatsappItems}
-                orderId={orderId}
-              />
             </div>
-          ) : null}
 
-          <div className="mt-8 space-y-3 w-full">
-            {/* Oculta o botão "Ver meus pedidos" e "Continuar comprando" caso existam itens de WhatsApp */}
-            {!hasWhatsappItems && (
-              <>
-                <Button
-                  render={<Link href="/perfil">Ver meus pedidos</Link>}
-                  nativeButton={false}
-                  className="w-full font-semibold"
-                ></Button>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Clique no botão para abrir o WhatsApp com os dados preenchidos.
+            </p>
 
-                <Link
-                  href="/"
-                  className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
-                >
-                  <ShoppingBag className="h-4 w-4" /> Continuar comprando{" "}
-                  <span aria-hidden="true">&rarr;</span>
-                </Link>
-              </>
-            )}
+            <WhatsAppActionButton
+              products={orderItems}
+              orderId={orderId}
+              order={{
+                total: order.total,
+                shipping_cost: order.shipping_cost,
+              }}
+            />
+          </div>
+
+          {/* Informação */}
+          <div className="mt-4 rounded-lg bg-muted/50 border border-border/50 p-2.5 text-left">
+            <p className="text-[10px] text-muted-foreground leading-tight">
+              <strong className="text-foreground">Importante:</strong> pagamento,
+              personalização e entrega são combinados diretamente com a loja.
+            </p>
+          </div>
+
+          {/* Navegação */}
+          <div className="mt-4 space-y-2">
+            <Button
+              render={<Link href="/perfil" />}
+              nativeButton={false}
+              variant="outline"
+              className="w-full h-9 text-xs font-semibold"
+            >
+              <UserRound className="h-3.5 w-3.5 mr-1.5" />
+              Acessar meu perfil
+            </Button>
+
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors py-1"
+            >
+              <Home className="h-3.5 w-3.5" />
+              Voltar para a loja
+            </Link>
           </div>
         </CardContent>
       </Card>

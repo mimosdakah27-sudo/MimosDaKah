@@ -1,3 +1,4 @@
+// Onde está o seu StoreProvider
 "use client";
 import { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";

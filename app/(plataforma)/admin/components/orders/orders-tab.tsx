@@ -6,8 +6,14 @@ import { EmptyOrders } from "./components/empty-orders";
 import { OrderCard } from "./components/order-card";
 
 export function OrdersTab({ orders }: { orders: OrderWithItems[] }) {
-  const { updateStatus, updateArchive, isStatusPending, isArchivePending } =
-    useAdminOrders();
+  const {
+    updateStatus,
+    updatePaymentStatus,
+    updateArchive,
+    isStatusPending,
+    isPaymentStatusPending,
+    isArchivePending,
+  } = useAdminOrders();
 
   if (orders.length === 0) {
     return <EmptyOrders />;
@@ -20,8 +26,10 @@ export function OrdersTab({ orders }: { orders: OrderWithItems[] }) {
           key={order.id}
           order={order}
           updateStatus={updateStatus}
+          updatePaymentStatus={updatePaymentStatus}
           updateArchive={updateArchive}
           isStatusPending={isStatusPending}
+          isPaymentStatusPending={isPaymentStatusPending}
           isArchivePending={isArchivePending}
         />
       ))}

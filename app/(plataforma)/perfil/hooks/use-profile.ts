@@ -1,62 +1,124 @@
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { toast } from "sonner";
-import { getUserOrders, rejectQuote } from "../services/profile-service";
+
+import { useAuth } from "@/hooks/use-auth";
+
+import {
+  getUserOrders,
+  rejectQuote,
+} from "../services/profile-service";
+
 import type { OrderWithItems } from "../types/profile-type";
 
 export function useProfile() {
-  const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-  const [orders, setOrders] = useState<OrderWithItems[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    user,
+    loading: authLoading,
+  } = useAuth();
 
-  const fetchOrders = useCallback(async () => {
-    if (!user) return;
-    try {
-      const data = await getUserOrders(user.id);
-      setOrders(data);
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao carregar seus pedidos.");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  const [
+    orders,
+    setOrders,
+  ] = useState<OrderWithItems[]>(
+    [],
+  );
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const fetchOrders =
+    useCallback(async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const data =
+          await getUserOrders(
+            user.id,
+          );
+
+        setOrders(data);
+      } catch (error: any) {
+        toast.error(
+          error?.message ||
+            "Erro ao carregar seus pedidos.",
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [user]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      router.push("/login");
+    if (authLoading) {
       return;
     }
+
+    // Se não estiver logado, apenas para o loading e não busca nada no banco
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     fetchOrders();
-  }, [user, authLoading, router, fetchOrders]);
+  }, [
+    user,
+    authLoading,
+    fetchOrders,
+  ]);
 
   /**
-   * Remove o orçamento do banco e atualiza a lista local.
+   * Remove um orçamento recusado.
    */
-  const handleRejectQuote = useCallback(async (orderId: string) => {
-  try {
-    await rejectQuote(orderId);
+  const handleRejectQuote =
+    useCallback(
+      async (
+        orderId: string,
+      ) => {
+        try {
+          await rejectQuote(
+            orderId,
+          );
 
-    setOrders((currentOrders) =>
-      currentOrders.filter((order) => order.id !== orderId)
+          setOrders(
+            (currentOrders) =>
+              currentOrders.filter(
+                (order) =>
+                  order.id !==
+                  orderId,
+              ),
+          );
+
+          toast.success(
+            "Orçamento recusado com sucesso.",
+          );
+        } catch (error: any) {
+          console.error(
+            "Erro ao recusar orçamento:",
+            error,
+          );
+
+          toast.error(
+            error?.message ||
+              "Não foi possível recusar o orçamento.",
+          );
+        }
+      },
+      [],
     );
-
-    toast.success("Orçamento recusado com sucesso.");
-  } catch (error: any) {
-    console.error("Erro ao recusar orçamento:", error);
-
-    toast.error(
-      error?.message || "Não foi possível recusar o orçamento."
-    );
-  }
-}, []);
 
   return {
     user,
     orders,
-    isInitialLoading: authLoading || loading,
+    isInitialLoading:
+      authLoading || loading,
     handleRejectQuote,
   };
 }

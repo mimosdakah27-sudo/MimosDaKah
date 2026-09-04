@@ -2,37 +2,52 @@ import * as yup from "yup";
 
 // types/checkout-type.ts
 
-// Esta interface descreve o objeto exato que seu checkout envia para o Supabase
 export interface PlaceOrderPayload {
   _items: {
     product_id: string;
-    product_name: string; // Adicionado
-    product_image: string; // Adicionado
+    product_name: string;
+    product_image: string;
     quantity: number;
     weight: number;
     width: number;
     height: number;
     length: number;
-    variant_id?: string | null; // Adicionado
-    name?: string | null; // Adicionado (Substitui 'cor')
-    tamanho?: string | null; // Adicionado
+    variant_id?: string | null;
+    name?: string | null;
+    tamanho?: string | null;
   }[];
   _shipping_name: string;
   _shipping_address: string;
+  _shipping_number?: string | null;
+  _shipping_without_number?: boolean;
+  _shipping_complement?: string | null;
+  _shipping_reference?: string | null;
+  _shipping_neighborhood?: string | null;
   _shipping_city: string;
+  _shipping_state: string;
   _shipping_zip: string;
   _shipping_phone?: string | null;
   _shipping_email?: string | null;
   _shipping_document: string;
+  _shipping_type?: string;           // Adicionado
+  _shipping_company_name?: string;   // Adicionado
+  _shipping_cost?: number;           // Adicionado
 }
+
 export interface CheckoutFormData {
   name: string;
   email: string;
   phone: string | null;
   zip: string;
   address: string;
+  without_number: boolean;
+  number?: string | null;
+  complement?: string | null;
+  reference?: string | null;
+  neighborhood?: string | null;
   city: string;
-  document: string; // Adicionado
+  state: string;
+  document: string;
 }
 
 const validateCPF = (cpf: string) => {
@@ -53,14 +68,26 @@ const validateCPF = (cpf: string) => {
   return remainder === parseInt(cpf.substring(10, 11));
 };
 
-export const checkoutSchema = yup.object({
+export const checkoutSchema: yup.ObjectSchema<CheckoutFormData> = yup.object({
   name: yup.string().required("Nome é obrigatório"),
   email: yup.string().email("E-mail inválido").required("E-mail é obrigatório"),
   phone: yup.string().nullable().defined(),
   zip: yup.string().required("CEP é obrigatório"),
   address: yup.string().required("Endereço é obrigatório"),
+  
+  without_number: yup.boolean().required().default(false),
+  number: yup.string().when("without_number", {
+    is: false,
+    then: (schema) => schema.required("Número é obrigatório").nullable(),
+    otherwise: (schema) => schema.notRequired().nullable(),
+  }),
+
+  complement: yup.string().nullable().notRequired(),
+  reference: yup.string().nullable().notRequired(),
+  neighborhood: yup.string().nullable().notRequired(),
   city: yup.string().required("Cidade é obrigatória"),
-  // Valida o CPF com ou sem pontos/traço
+  state: yup.string().required("UF é obrigatória"),
+
   document: yup
     .string()
     .required("CPF é obrigatório")

@@ -1,47 +1,60 @@
+// app/checkout/success/services/order-service.ts
+
 import { supabaseServer } from "@/lib/supabase/server";
 
 export async function getOrderDetails(orderId: string) {
-  console.log("Debug - Buscando pedido com ID:", orderId);
+  const supabase = await supabaseServer();
 
-  const supabase = await supabaseServer(); 
-  
-  // 1. Busca os dados do pedido principal
+  // Busca apenas os campos necessários do pedido (total e shipping_cost)
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("*")
+    .select("id, total, shipping_cost")
     .eq("id", orderId)
     .single();
 
   if (orderError || !order) {
-    console.error("Debug - Erro na consulta do pedido:", orderError);
-    throw orderError;
+    console.error(
+      "[SUCCESS] Erro ao buscar pedido:",
+      orderError,
+    );
+
+    return null;
   }
 
-  // 2. Busca os itens do pedido
+  // Busca os itens do pedido
   const { data: items, error: itemsError } = await supabase
     .from("order_items")
-    .select("*")
+    .select("product_id, product_name, product_image, unit_price, quantity, name, tamanho")
     .eq("order_id", orderId);
 
   if (itemsError) {
-    console.error("Debug - Erro na consulta dos itens do pedido:", itemsError);
-    throw itemsError;
+    console.error(
+      "[SUCCESS] Erro ao buscar itens:",
+      itemsError,
+    );
+
+    return null;
   }
 
-  // 3. Para cada item, busca o 'tipo_venda' atual na tabela products
   const itemsWithProductInfo = await Promise.all(
-    items.map(async (item) => {
-      let tipo_venda = "normal";
-      
+    (items || []).map(async (item) => {
+      let tipo_venda:
+        | "normal"
+        | "orcamento"
+        | "whatsapp_finalizacao" = "normal";
+
       if (item.product_id) {
-        const { data: prodData } = await supabase
+        const { data: product } = await supabase
           .from("products")
           .select("tipo_venda")
           .eq("id", item.product_id)
-          .single();
+          .maybeSingle();
 
-        if (prodData) {
-          tipo_venda = prodData.tipo_venda;
+        if (product?.tipo_venda) {
+          tipo_venda = product.tipo_venda as
+            | "normal"
+            | "orcamento"
+            | "whatsapp_finalizacao";
         }
       }
 
@@ -51,18 +64,14 @@ export async function getOrderDetails(orderId: string) {
           id: item.product_id,
           nome: item.product_name,
           imagem_url: item.product_image,
-          tipo_venda: tipo_venda,
-        }
+          tipo_venda,
+        },
       };
-    })
+    }),
   );
 
-  const fullOrder = {
+  return {
     ...order,
-    order_items: itemsWithProductInfo
+    order_items: itemsWithProductInfo,
   };
-  
-  console.log("Debug - Pedido encontrado com sucesso.");
-  
-  return fullOrder;
 }

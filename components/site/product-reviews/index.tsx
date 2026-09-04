@@ -8,8 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, Edit2, Star, Trash2, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { AlertTriangle, Edit2, LogIn, Star, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ type Props = {
 export function ProductReviews({ productId, initialReviews }: Props) {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [isPending, startTransition] = React.useTransition();
 
@@ -69,7 +71,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
       });
 
       setIsEditing(false);
-      
+
       startTransition(() => {
         router.refresh();
       });
@@ -114,6 +116,9 @@ export function ProductReviews({ productId, initialReviews }: Props) {
 
   const isSubmitDisabled = loading || isPending || rating === 0;
 
+  // URL de login com redirect configurado para voltar exatamente para esta página do produto
+  const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
+
   return (
     <div className="space-y-6 pt-4 border-t">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -135,7 +140,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
         )}
       </div>
 
-      {user && (
+      {user ? (
         <div className="rounded-xl border bg-card p-5 space-y-4 shadow-sm">
           {userReview && !isEditing ? (
             <div className="flex justify-between items-start gap-4">
@@ -225,10 +230,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                     <X className="h-4 w-4 mr-2" /> Cancelar
                   </Button>
                 )}
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitDisabled}
-                >
+                <Button onClick={handleSubmit} disabled={isSubmitDisabled}>
                   {loading || isPending
                     ? "Salvando..."
                     : userReview
@@ -238,6 +240,23 @@ export function ProductReviews({ productId, initialReviews }: Props) {
               </div>
             </div>
           )}
+        </div>
+      ) : (
+        <div className="rounded-xl border bg-card p-6 text-center space-y-3 shadow-sm">
+          <p className="text-sm text-muted-foreground">
+            Você precisa estar conectado à sua conta para avaliar este produto.
+          </p>
+          <div>
+            <Button
+            nativeButton={false}
+              render={
+                <Link href={loginUrl} className="gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Fazer login para avaliar
+                </Link>
+              }
+            ></Button>
+          </div>
         </div>
       )}
 
@@ -278,7 +297,9 @@ export function ProductReviews({ productId, initialReviews }: Props) {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-2">
               <AlertTriangle className="h-6 w-6" />
             </div>
-            <DialogTitle className="text-center">Excluir sua avaliação?</DialogTitle>
+            <DialogTitle className="text-center">
+              Excluir sua avaliação?
+            </DialogTitle>
             <DialogDescription className="text-center">
               Tem certeza de que deseja remover sua avaliação deste produto?
               Esta ação não pode ser desfeita.
