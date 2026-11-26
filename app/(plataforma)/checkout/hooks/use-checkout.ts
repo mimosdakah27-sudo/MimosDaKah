@@ -1,443 +1,323 @@
 "use client";
 
-import {
-  clearCheckoutDraft,
-  getCheckoutDraft,
-  updateCheckoutDraft,
-} from "@/lib/checkout-draft";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-
 import { useAuth } from "@/hooks/use-auth";
 import { useStore } from "@/hooks/use-store";
+import {
+  clearCheckoutDraft, createEmptyAddressDraft, createEmptyCustomerDraft,
+  getCheckoutDraft, updateCheckoutDraft, type CheckoutDraft, type CheckoutAddressDraft, type CheckoutShippingChoice,
+} from "@/lib/checkout-draft";
 import { useCart } from "@/lib/store/cart";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { unmask } from "@/lib/utils";
-
-import { useShipping } from "../hooks/use-shipping";
+import { maskCEP, unmask } from "@/lib/utils";
+import { getEffectivePrice, getLocalDeliveryFee, hasCheckoutAddress, hasCheckoutContact } from "../checkout-values";
 import { createCheckoutSession, saveUserAddress } from "../services/checkout";
+import { useShipping } from "./use-shipping";
 
-export type CheckoutStep = "customer" | "address" | "shipping" | "review";
+type CheckoutStep = CheckoutDraft["step"];
+export type SelectedShippingRate = CheckoutShippingChoice["rate"];
 
-export type CheckoutCustomerData = {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  document: string;
-};
+const steps: CheckoutStep[] = ["customer", "address", "shipping", "review"];
 
-export type CheckoutAddressData = {
-  zip_code: string;
-  street: string;
-  number: string;
-  without_number: boolean;
-  complement: string;
-  reference: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-};
-
-type SavedAddress = {
-  id: string;
-  zip_code: string | null;
-  street: string | null;
-  number: string | null;
-  without_number: boolean | null;
-  complement: string | null;
-  reference: string | null;
-  neighborhood: string | null;
-  city: string | null;
-  state: string | null;
-  active: boolean | null;
-};
-
-export type SelectedShippingRate = {
-  id: string;
-  price: number;
-  delivery_time?: number;
-  type?: "pickup" | "local" | "other_city";
-};
-
-const VALID_STEPS: CheckoutStep[] = [
-  "customer",
-  "address",
-  "shipping",
-  "review",
-];
-
-function isValidStep(value: string | null): value is CheckoutStep {
-  return Boolean(value && VALID_STEPS.includes(value as CheckoutStep));
+function readUrlStep() {
+  const value = new URLSearchParams(window.location.search).get("step") as CheckoutStep;
+  return steps.includes(value) ? value : null;
 }
 
-function normalizeZip(zip?: string | null) {
-  return String(zip ?? "").replace(/\D/g, "");
+function reachableStep(target: CheckoutStep, contact: boolean, address: boolean, delivery: boolean) {
+  const last = !contact ? 0 : !address ? 1 : !delivery ? 2 : 3;
+  return steps[Math.min(steps.indexOf(target), last)];
 }
 
-function normalizeText(value?: string | null) {
-  return String(value ?? "")
-    .trim()
-    .toLowerCase();
+function stepUrl(step: CheckoutStep) {
+  const url = new URL(window.location.href);
+  url.searchParams.set("step", step);
+  return url.href;
+}
+
+function getCatalogZip() {
+  try {
+    const zip = unmask(sessionStorage.getItem("catalog-shipping-zip") || "");
+    sessionStorage.removeItem("catalog-shipping-zip");
+    return zip.length === 8 ? zip : "";
+  } catch {
+    return "";
+  }
 }
 
 export function useCheckout() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
+  const queryClient = useQueryClient();
   const { user, profile, loading: authLoading } = useAuth();
-  const { config } = useStore();
-
-  const [isMounted, setIsMounted] = useState(false);
+  const { config, isLoading: loadingConfig } = useStore();
+  const items = useCart((state) => state.items);
+  const [initializedFor, setInitializedFor] = useState<string | null>(null);
+  const initializedAccount = useRef<string | null>(null);
+  const accountId = user?.id || "";
+  const isMounted = initializedFor === accountId && !authLoading;
+  const [requestedStep, setStep] = useState<CheckoutStep>("customer");
+  const [customerData, setCustomerData] = useState(createEmptyCustomerDraft);
+  const [addressData, setAddressData] = useState(createEmptyAddressDraft);
+  const [choice, setChoice] = useState<CheckoutShippingChoice | null>(null);
+  const [isLookingUpCep, setIsLookingUpCep] = useState(false);
+  const [cepMessage, setCepMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState<CheckoutStep>("customer");
-
-  const [customerData, setCustomerData] = useState<CheckoutCustomerData>({
-    id: "",
-    name: "",
-    phone: "",
-    email: "",
-    document: "",
-  });
-
-  const [addressData, setAddressData] = useState<CheckoutAddressData>({
-    zip_code: "",
-    street: "",
-    number: "",
-    without_number: false,
-    complement: "",
-    reference: "",
-    neighborhood: "",
-    city: "",
-    state: "",
-  });
-
-  const [selectedRate, setSelectedRate] = useState<SelectedShippingRate | null>(null);
-
-  const cartItems = useCart((state) => state.items);
-
-  const draftInitialized = useRef(false);
-  const accountInitialized = useRef(false);
-  const savedAddressInitialized = useRef(false);
-  const addressSaveInProgress = useRef(false);
+  const [receiptHref, setReceiptHref] = useState("");
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const submitting = useRef(false);
+  const requestId = useRef("");
+  const addressSaving = useRef(false);
+  const [saveAfterLogin, setSaveAfterLogin] = useState(false);
+  const skipAddressLookup = useRef("");
 
   useEffect(() => {
-    setIsMounted(true);
+    if (authLoading || initializedAccount.current === accountId) return;
+    initializedAccount.current = accountId;
+    const draft = getCheckoutDraft();
+    const sameAccount = !draft?.customerData.id || draft.customerData.id === accountId;
+    if (!sameAccount) clearCheckoutDraft();
+    requestId.current = sameAccount ? draft?.requestId || "" : "";
+    const customer = sameAccount && draft ? draft.customerData : createEmptyCustomerDraft();
+    let address = sameAccount && draft ? draft.addressData : createEmptyAddressDraft();
+    const quotedZip = getCatalogZip();
+    if (quotedZip && quotedZip !== unmask(address.zip_code)) {
+      address = { ...createEmptyAddressDraft(), zip_code: maskCEP(quotedZip) };
+    }
+    skipAddressLookup.current = address.street || address.city ? unmask(address.zip_code) : "";
+    const contact = {
+      ...customer, id: accountId,
+      name: customer.name || profile?.display_name || user?.user_metadata?.display_name || "",
+      phone: customer.phone || profile?.phone || user?.user_metadata?.phone || "",
+      email: customer.email || profile?.email || user?.email || "",
+    };
+    setCustomerData(contact);
+    setAddressData(address);
+    const restoredChoice = sameAccount ? draft?.shippingChoice ?? null : null;
+    const target = readUrlStep() ?? (sameAccount && draft ? draft.step : "customer");
+    const initial = reachableStep(target, hasCheckoutContact(contact), hasCheckoutAddress(address), Boolean(restoredChoice));
+    if (readUrlStep() !== initial) window.history.replaceState(null, "", stepUrl(initial));
+    setStep(initial);
+    setChoice(restoredChoice);
+    setSaveAfterLogin(Boolean(accountId && sameAccount && draft?.saveAddressAfterLogin));
+    setInitializedFor(accountId);
+  }, [accountId, authLoading, profile, user]);
+
+  useEffect(() => {
+    if (!isMounted || submitting.current || !items.length) return;
+    updateCheckoutDraft({ customerData, addressData, step: requestedStep, shippingChoice: choice });
+  }, [isMounted, customerData, addressData, requestedStep, choice, items.length]);
+
+  // Load the saved account address only while all fields are untouched.
+  useEffect(() => {
+    if (!isMounted || !accountId) return;
+    let current = true;
+    async function loadAddress() {
+      const { data } = await supabaseBrowser().from("user_addresses").select("*")
+        .eq("user_id", accountId).order("active", { ascending: false })
+        .order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      const saved = data as Partial<CheckoutAddressDraft> | null;
+      if (!saved || !current) return;
+      setAddressData((prev) => {
+        if (Object.values(prev).some(Boolean)) return prev;
+        return {
+          zip_code: maskCEP(saved.zip_code || ""), street: saved.street || "", number: saved.number || "",
+          without_number: Boolean(saved.without_number), complement: saved.complement || "",
+          reference: saved.reference || "", neighborhood: saved.neighborhood || "",
+          city: saved.city || "", state: saved.state || "",
+        };
+      });
+    }
+    void loadAddress().catch(() => {});
+    return () => { current = false; };
+  }, [accountId, isMounted]);
+
+  useEffect(() => {
+    if (!isMounted || !accountId || !saveAfterLogin || !hasCheckoutAddress(addressData)) return;
+    setSaveAfterLogin(false);
+    updateCheckoutDraft({ saveAddressAfterLogin: false });
+    void saveUserAddress(addressData)
+      .then(({ success }) => success ? toast.success("Endereço salvo na sua conta.") : toast.error("Não foi possível salvar o endereço na conta."))
+      .catch(() => toast.error("Não foi possível salvar o endereço na conta."));
+  }, [accountId, addressData, isMounted, saveAfterLogin]);
+
+  const contactValid = hasCheckoutContact(customerData);
+  const addressValid = hasCheckoutAddress(addressData);
+  const editingAddress = contactValid && requestedStep !== "customer" && (requestedStep === "address" || !addressValid);
+  const zip = unmask(addressData.zip_code);
+  useEffect(() => {
+    setCepMessage("");
+    setIsLookingUpCep(false);
+    if (!isMounted) return;
+    if (skipAddressLookup.current !== zip) skipAddressLookup.current = "";
+    if (!editingAddress || zip.length !== 8) return;
+    if (skipAddressLookup.current === zip) return;
+    const controller = new AbortController();
+    setIsLookingUpCep(true);
+    async function lookupCep() {
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${zip}/json/`, { signal: controller.signal });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        if (data.erro) {
+          setCepMessage("CEP não encontrado. Confira o CEP ou preencha o endereço.");
+          return;
+        }
+        skipAddressLookup.current = zip;
+        setAddressData((prev) => unmask(prev.zip_code) !== zip ? prev : {
+          ...prev, street: prev.street || data.logradouro || "", neighborhood: prev.neighborhood || data.bairro || "",
+          city: prev.city || data.localidade || "", state: prev.state || data.uf || "",
+        });
+      } catch {
+        if (!controller.signal.aborted) setCepMessage("Consulta indisponível. Você pode preencher o endereço.");
+      } finally {
+        if (!controller.signal.aborted) setIsLookingUpCep(false);
+      }
+    }
+    void lookupCep();
+    return () => controller.abort();
+  }, [isMounted, editingAddress, zip]);
+
+  const storeZip = unmask(config?.zip_code || "");
+  const hasLocalDelivery = Boolean(config?.allow_local_delivery && storeZip.length === 8 && zip === storeZip);
+  const wantsShipping = requestedStep === "shipping" || requestedStep === "review";
+  const shipping = useShipping(
+    isMounted && wantsShipping && contactValid && addressValid && !hasLocalDelivery ? storeZip : undefined,
+    zip, items
+  );
+  const selectionKey = JSON.stringify([storeZip, zip, items.map(({ product, quantity }) => [product.id, product.variant_id, quantity])]);
+  const shippingRates = !shipping.isError && shipping.data?.ok ? shipping.data.rates : undefined;
+  const shippingError = shipping.isError || (!loadingConfig && !storeZip)
+    ? "Não foi possível consultar o frete agora. Tente novamente."
+    : shipping.data?.ok === false ? shipping.data.message : undefined;
+  let selectedRate = choice?.key === selectionKey ? choice.rate : null;
+  if (selectedRate?.type === "other_city" &&
+      !shippingRates?.some((rate) => rate.id === selectedRate?.id && rate.price === selectedRate.price)) selectedRate = null;
+  if (selectedRate?.type === "local" && (!hasLocalDelivery || !config || getLocalDeliveryFee(config) !== selectedRate.price)) selectedRate = null;
+  if (selectedRate?.type === "pickup" && (!config?.allow_local_pickup || !items.every(({ product }) => product.permite_retirada !== false))) selectedRate = null;
+  const setSelectedRate = (rate: SelectedShippingRate | null) => setChoice(rate ? { rate, key: selectionKey } : null);
+
+  const step = reachableStep(requestedStep, contactValid, addressValid, Boolean(selectedRate));
+  const canVisitStep = (next: CheckoutStep) => next === reachableStep(next, contactValid, addressValid, Boolean(selectedRate));
+  const restoringShipping = !!choice && requestedStep === "review" && (loadingConfig || shipping.isFetching);
+  useEffect(() => {
+    // Remover os itens confirmados invalida o frete, mas o próximo destino já é o recibo.
+    if (submitting.current || !isMounted || step === requestedStep || restoringShipping) return;
+    setStep(step);
+    window.history.replaceState(null, "", stepUrl(step));
+  }, [isMounted, isSubmitting, step, requestedStep, restoringShipping]);
+
+  // Next synchronizes native history with the route. Restore the local form
+  // step when the visitor uses browser Back or Forward inside checkout.
+  useEffect(() => {
+    const onPopState = () => {
+      if (window.location.pathname === "/checkout") setStep(readUrlStep() ?? "customer");
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  // 1. Restaura rascunho
-  useEffect(() => {
-    if (!isMounted || draftInitialized.current) return;
-    draftInitialized.current = true;
-
-    const draft = getCheckoutDraft();
-    const urlStep = searchParams.get("step");
-    const initialStep = isValidStep(urlStep)
-      ? urlStep
-      : draft?.step && isValidStep(draft.step)
-        ? draft.step
-        : "customer";
-
-    setStep(initialStep);
-
-    if (draft?.customerData) {
-      setCustomerData((prev) => ({ ...prev, ...draft.customerData }));
-    }
-    if (draft?.addressData) {
-      setAddressData((prev) => ({ ...prev, ...draft.addressData }));
-    }
-  }, [isMounted, searchParams]);
-
-  // 2. Sincroniza dados da conta
-  useEffect(() => {
-    if (!isMounted || !draftInitialized.current || authLoading || !user) return;
-    if (accountInitialized.current) return;
-    accountInitialized.current = true;
-
-    setCustomerData((prev) => ({
-      id: prev.id || user.id || "",
-      name: prev.name || profile?.display_name || user.user_metadata?.display_name || "",
-      phone: prev.phone || profile?.phone || user.user_metadata?.phone || "",
-      email: prev.email || profile?.email || user.email || "",
-      document: prev.document || "",
-    }));
-  }, [isMounted, authLoading, user, profile]);
-
-  // 3. Carrega endereço salvo
-  useEffect(() => {
-    if (!isMounted || !draftInitialized.current || authLoading || !user) return;
-    if (savedAddressInitialized.current) return;
-
-    const draft = getCheckoutDraft();
-    const draftAddress = draft?.addressData;
-    const hasDraftAddress = Boolean(draftAddress?.zip_code || draftAddress?.street);
-    const hasCurrentAddress = Boolean(addressData.zip_code || addressData.street);
-
-    if (hasDraftAddress || hasCurrentAddress) {
-      savedAddressInitialized.current = true;
-      return;
-    }
-
-    savedAddressInitialized.current = true;
-
-    const loadSavedAddress = async () => {
-      try {
-        const supabase = supabaseBrowser();
-        const { data, error } = await supabase
-          .from("user_addresses")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("active", { ascending: false })
-          .order("updated_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (error || !data) return;
-
-        const saved = data as SavedAddress;
-        setAddressData((prev) => {
-          if (prev.zip_code || prev.street) return prev;
-          return {
-            zip_code: saved.zip_code || "",
-            street: saved.street || "",
-            number: saved.number || "",
-            without_number: Boolean(saved.without_number),
-            complement: saved.complement || "",
-            reference: saved.reference || "",
-            neighborhood: saved.neighborhood || "",
-            city: saved.city || "",
-            state: saved.state || "",
-          };
-        });
-        toast.success("Seu endereço salvo foi preenchido.");
-      } catch (error) {
-        console.error("[CHECKOUT] Erro ao carregar endereço:", error);
-      }
-    };
-
-    loadSavedAddress();
-  }, [isMounted, authLoading, user, addressData]);
-
-  // 4. Salva endereço pós-login
-  useEffect(() => {
-    if (!isMounted || authLoading || !user || addressSaveInProgress.current) return;
-
-    const draft = getCheckoutDraft();
-    if (!draft?.saveAddressAfterLogin) return;
-
-    const address = draft.addressData;
-    if (!address?.zip_code || !address?.street) return;
-
-    addressSaveInProgress.current = true;
-
-    const saveAfterLogin = async () => {
-      try {
-        const result = await saveUserAddress(user.id, address);
-        if (result.success) {
-          toast.success("Endereço salvo na sua conta!");
-        }
-        updateCheckoutDraft({ saveAddressAfterLogin: false });
-      } catch (error) {
-        console.error("[CHECKOUT] Erro ao salvar endereço após login:", error);
-      } finally {
-        addressSaveInProgress.current = false;
-      }
-    };
-
-    saveAfterLogin();
-  }, [isMounted, authLoading, user]);
-
-  const saveAddressForLoggedUser = async (): Promise<boolean> => {
-    if (!user || addressSaveInProgress.current) return true;
-
-    if (!addressData.zip_code || !addressData.street) {
-      toast.error("Preencha todos os dados obrigatórios do endereço.");
-      return false;
-    }
-
-    addressSaveInProgress.current = true;
-    try {
-      const supabase = supabaseBrowser();
-      const { data: existingData } = await supabase
-        .from("user_addresses")
-        .select("id")
-        .eq("user_id", user.id);
-
-      if (existingData && existingData.length > 0) return true;
-
-      const result = await saveUserAddress(user.id, addressData);
-      if (!result.success) throw result.error;
-
-      toast.success("Endereço salvo na sua conta!");
-      return true;
-    } catch (error) {
-      toast.error("Não foi possível salvar seu endereço.");
-      return false;
-    } finally {
-      addressSaveInProgress.current = false;
-    }
-  };
-
-  const items = useMemo(() => {
-    return cartItems.map((item: any) => {
-      const product = item?.product || {};
-      return {
-        quantity: Number(item.quantity) || 1,
-        product: {
-          ...product,
-          id: String(product.id),
-          nome: product.nome || product.name || "Produto",
-          preco: Number(product.preco) || 0,
-          preco_promocional: product.preco_promocional != null ? Number(product.preco_promocional) : null,
-          imagem_url: product.imagem_url || "",
-          weight: Number(product.weight) || 0.3,
-          width: Number(product.width) || 10,
-          height: Number(product.height) || 10,
-          length: Number(product.length) || 10,
-        },
-      };
-    });
-  }, [cartItems]);
-
-  useEffect(() => {
-    if (isMounted && items.length === 0) {
-      router.back();
-    }
-  }, [isMounted, items.length, router]);
-
-  const subtotal = useMemo(() => {
-    return items.reduce((total, item) => {
-      const reg = Number(item.product.preco) || 0;
-      const promo = Number(item.product.preco_promocional) || 0;
-      const effective = promo > 0 && promo < reg ? promo : reg;
-      return total + effective * Number(item.quantity || 1);
-    }, 0);
-  }, [items]);
-
-  const handleFetchCep = async (cep: string) => {
-    const rawCep = unmask(cep);
-    if (rawCep.length !== 8) return;
-
-    try {
-      const response = await fetch(`https://viacep.com.br/ws/${rawCep}/json/`);
-      const data = await response.json();
-
-      if (data.erro) {
-        toast.error("CEP não encontrado.");
-        return;
-      }
-
-      setAddressData((prev) => ({
-        ...prev,
-        zip_code: cep,
-        street: data.logradouro?.trim() || prev.street,
-        neighborhood: data.bairro?.trim() || prev.neighborhood,
-        city: data.localidade?.trim() || prev.city,
-        state: data.uf?.trim()?.toUpperCase() || prev.state,
-      }));
-      setSelectedRate(null);
-    } catch {
-      toast.error("Não foi possível consultar o CEP.");
-    }
-  };
-
-  const normalizedStoreZip = normalizeZip(config?.zip_code);
-  const normalizedCustomerZip = normalizeZip(addressData.zip_code);
-  const isLocalZip = normalizedStoreZip.length === 8 && normalizedStoreZip === normalizedCustomerZip;
-
-  const { data: shippingRates, isLoading: isLoadingShipping } = useShipping(
-    config?.zip_code,
-    addressData.zip_code,
-    items
-  );
-
-  useEffect(() => {
-    if (isLocalZip && selectedRate?.type === "other_city") setSelectedRate(null);
-    if (!isLocalZip && selectedRate?.type === "local") setSelectedRate(null);
-  }, [isLocalZip, selectedRate]);
-
-  const shippingPrice = Number(Number(selectedRate?.price || 0).toFixed(2));
-  const total = useMemo(() => Number((subtotal + shippingPrice).toFixed(2)), [subtotal, shippingPrice]);
-
-  const shippingPayload = selectedRate
-    ? {
-        id: selectedRate.type === "other_city" ? "other_city" : String(selectedRate.id),
-        price: shippingPrice,
-      }
-    : null;
-
-  const changeStep = (nextStep: CheckoutStep) => {
-    setStep(nextStep);
-    router.replace(`/checkout?step=${nextStep}`, { scroll: false });
+  const changeStep = (next: CheckoutStep) => {
+    if (submitting.current || !canVisitStep(next) || next === requestedStep) return;
+    setStep(next);
+    window.history.pushState(null, "", stepUrl(next));
   };
 
   const handleAddressNext = async () => {
-    if (user) {
-      const saved = await saveAddressForLoggedUser();
-      if (!saved) return;
-    }
+    if (!addressValid) return;
     changeStep("shipping");
+    if (user && !addressSaving.current) {
+      addressSaving.current = true;
+      setIsSavingAddress(true);
+      try {
+        const { success } = await saveUserAddress(addressData, true);
+        if (!success) toast.error("Não foi possível salvar o endereço na conta. Você pode continuar o pedido.");
+      } catch {
+        toast.error("Não foi possível salvar o endereço na conta. Você pode continuar o pedido.");
+      } finally {
+        addressSaving.current = false;
+        setIsSavingAddress(false);
+      }
+    }
   };
 
+  const subtotal = items.reduce((sum, { product, quantity }) => sum + getEffectivePrice(product) * quantity, 0);
+  const shippingPrice = selectedRate?.price ?? 0;
+  const total = subtotal + shippingPrice;
   const handleFinalizeOrder = async () => {
-    if (isSubmitting) return;
-    if (!selectedRate) return toast.error("Selecione uma opção de entrega.");
-    if (!customerData.name.trim()) return (changeStep("customer"), toast.error("Informe o nome."));
-    if (!addressData.street.trim()) return (changeStep("address"), toast.error("Informe o endereço."));
-
+    if (submitting.current || !contactValid || !addressValid || !selectedRate || !items.length) return;
+    submitting.current = true;
     setIsSubmitting(true);
+    let confirmed = false;
     try {
-      if (!shippingPayload) throw new Error("Frete não selecionado.");
-
-      await createCheckoutSession({
+      if (!requestId.current) {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+        requestId.current = [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join("-");
+      }
+      updateCheckoutDraft({ requestId: requestId.current });
+      const result = await createCheckoutSession({
+        requestId: requestId.current,
         user: {
-          id: customerData.id || null,
-          name: customerData.name.trim(),
-          phone: customerData.phone.trim(),
-          email: customerData.email.trim() || null,
-          document: customerData.document.trim() || null,
-          address: addressData.street.trim(),
-          number: addressData.without_number ? null : addressData.number.trim() || null,
-          without_number: addressData.without_number,
-          complement: addressData.complement.trim() || null,
-          reference: addressData.reference.trim() || null,
-          neighborhood: addressData.neighborhood.trim() || null,
-          city: addressData.city.trim(),
-          state: addressData.state.trim(),
-          zip: addressData.zip_code.trim(),
+          name: customerData.name, phone: customerData.phone, email: customerData.email, document: customerData.document,
+          address: addressData.street, number: addressData.number, without_number: addressData.without_number,
+          complement: addressData.complement, reference: addressData.reference, neighborhood: addressData.neighborhood,
+          city: addressData.city, state: addressData.state, zip: addressData.zip_code,
         },
         items,
-        shipping: shippingPayload,
+        shipping: { id: selectedRate.type || selectedRate.id, price: shippingPrice },
       });
-    } catch (error: any) {
-      if (error?.digest?.startsWith("NEXT_REDIRECT")) return;
-      toast.error(error instanceof Error ? error.message : "Erro ao registrar o pedido.");
+      if ("error" in result) {
+        toast.error(result.error, result.productId ? {
+          action: { label: "Ver produto", onClick: () => router.push(`/produto/${result.productId}`) },
+        } : undefined);
+        if (result.refreshShipping) {
+          submitting.current = false;
+          setSelectedRate(null);
+          changeStep("shipping");
+          void queryClient.invalidateQueries({ queryKey: ["storeConfig"] });
+          void queryClient.invalidateQueries({ queryKey: ["shipping-rates"] });
+        }
+        return;
+      }
+      confirmed = true;
+      const href = `/sucesso?order_id=${encodeURIComponent(result.orderId)}#whatsapp`;
+      setReceiptHref(href);
+      clearCheckoutDraft();
+      // Other products can be added while the server registers this order.
+      useCart.setState((current) => ({
+        items: current.items.flatMap((item) => {
+          const ordered = items.find(({ product }) => product.id === item.product.id && product.variant_id === item.product.variant_id);
+          if (!ordered) return [item];
+          const quantity = item.quantity - ordered.quantity;
+          return quantity > 0 ? [{ ...item, quantity }] : [];
+        }),
+      }));
+      window.location.replace(href);
+      return;
+    } catch {
+      if (!confirmed) toast.error("Não foi possível registrar seu pedido. Seus dados foram mantidos. Tente novamente.");
     } finally {
-      setIsSubmitting(false);
+      // On success, keep the confirmation locked while navigating to the receipt.
+      if (!confirmed) {
+        submitting.current = false;
+        setIsSubmitting(false);
+      }
     }
   };
 
   return {
-    isMounted,
-    isSubmitting,
-    step,
-    changeStep,
-    customerData,
-    setCustomerData,
-    addressData,
-    setAddressData,
-    selectedRate,
-    setSelectedRate,
-    shippingRates,
-    isLoadingShipping,
-    storeConfig: config,
-    items,
-    subtotal,
-    shippingPrice,
-    total,
-    handleFetchCep,
-    handleAddressNext,
-    handleFinalizeOrder,
+    isMounted, isGuest: !user, isSubmitting, receiptHref, step, changeStep, canVisitStep,
+    customerData, setCustomerData, addressData, setAddressData, selectedRate, setSelectedRate,
+    shippingRates, shippingError, isLoadingShipping: loadingConfig || shipping.isFetching,
+    retryShipping: () => {
+      if (!storeZip) void queryClient.invalidateQueries({ queryKey: ["storeConfig"] });
+      else void shipping.refetch();
+    },
+    storeConfig: config, items, subtotal, shippingPrice, total, isLookingUpCep, cepMessage, isSavingAddress,
+    handleAddressNext, handleFinalizeOrder,
   };
 }

@@ -1,62 +1,37 @@
-// app/checkout/success/components/whatsapp-action-button.tsx
-
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
 import { MessageCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-
-import { useWhatsAppOrder } from "../hooks/use-whatsapp-order";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { getWhatsAppOrderUrl, type ReceiptItem, type ReceiptTotals } from "../services/whatsapp-order";
 
 interface WhatsAppActionButtonProps {
-  products: any[];
+  storePhone: string | null;
+  products: ReceiptItem[];
   orderId: string;
-  order: {
-    total: number;
-    shipping_cost: number;
-  };
+  order: ReceiptTotals;
 }
 
-export function WhatsAppActionButton({
-  products,
-  orderId,
-  order,
-}: WhatsAppActionButtonProps) {
-  const router = useRouter();
+export function WhatsAppActionButton({ products, orderId, order, storePhone }: WhatsAppActionButtonProps) {
+  const [origin, setOrigin] = useState("");
+  const phone = storePhone?.replace(/\D/g, "") || "";
+  const href = /^(55)?\d{10,11}$/.test(phone) ? getWhatsAppOrderUrl(phone, products, orderId, order, origin) : null;
 
-  const { profile } = useAuth();
+  useEffect(() => { setOrigin(window.location.origin); }, []);
+  useEffect(() => {
+    if (!href || !origin || window.location.hash !== "#whatsapp") return;
+    // Consumir a intenção antes de sair permite usar Voltar ou atualizar o recibo.
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    window.location.assign(href);
+  }, [href, origin]);
 
-  const { sendWhatsAppOrder } = useWhatsAppOrder();
-
-  const handleClick = () => {
-    const result = sendWhatsAppOrder(
-      products,
-      orderId,
-      order,
-    );
-
-    if (!result?.success) {
-      return;
-    }
-
-    /*
-     * Depois de abrir o WhatsApp:
-     *
-     * Usuário logado → perfil
-     * Visitante → página inicial
-     */
-    if (profile) {
-      router.push("/perfil");
-    } else {
-      router.push("/");
-    }
-  };
-
+  if (!href) {
+    return <p className="text-xs text-muted-foreground">O WhatsApp da loja está indisponível. Guarde o número do pedido acima.</p>;
+  }
   return (
     <Button
-      onClick={handleClick}
-      className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+      render={<a href={href} />} nativeButton={false}
+      size="lg" className="flow-action"
     >
       <MessageCircle className="h-4 w-4 mr-2" />
       Enviar pedido pelo WhatsApp

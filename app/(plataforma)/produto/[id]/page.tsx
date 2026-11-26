@@ -1,5 +1,5 @@
 // --- 3. app/product/[id]/page.tsx ---
-import { BackButton } from "@/components/site/back-button";
+import Link from "next/link";
 import { ProductMainLayout } from "@/components/site/product-main-layout";
 import { notFound } from "next/navigation";
 import { getProductDetails } from "./hooks/use-product-details";
@@ -23,14 +23,16 @@ export default async function ProductPage(props: {
   const details = await getProductDetails(productId);
   if (!details) return notFound();
 
-  const { product, variants, reviews } = details;
-  console.log("ProductPage details:", details);
+  const { product, variants, reviews, images } = details;
+
   
   return (
-    <div className="mx-auto">
-      <BackButton />
+    <div className="mx-auto max-w-6xl">
+      <nav aria-label="Navegação estrutural" className="mb-4 text-sm text-muted-foreground"><Link href="/#produtos" className="underline underline-offset-4">Catálogo</Link> / {product.nome}</nav>
 
       <ProductMainLayout
+        key={product.id}
+        images={images}
         product={product}
         variants={variants}
         reviews={reviews}

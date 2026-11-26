@@ -18,7 +18,7 @@ export default function ForgotPasswordPage() {
           <KeyRound className="w-8 h-8 text-primary-foreground" />
         </div>
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Recuperar senha</h1>
+          <h1 className="page-title">Recuperar senha</h1>
           <p className="text-muted-foreground text-sm leading-relaxed">
             Esqueceu seus dados? Digite seu e-mail para receber um link de acesso.
           </p>

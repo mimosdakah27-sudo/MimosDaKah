@@ -1,6 +1,5 @@
-import { enviarParaCarrinhoMelhorEnvio } from "@/lib/actions/melhor-envio";
 import { revalidateProductFull } from "@/lib/actions/revalidate";
-import { stripe } from "@/lib/stripe/server";
+import { getStripe } from "@/lib/stripe/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
@@ -14,7 +13,7 @@ export async function POST(req: Request) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!,
@@ -23,8 +22,9 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as any;
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
+    const session = event.data.object;
+    if (session.payment_status !== "paid") return new NextResponse(null, { status: 200 });
     const metadata = session.metadata || {};
     const orderId = metadata.orderId;
 
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
       // 2. Buscar o pedido completo com os itens cadastrados no Supabase
       const { data: order, error: orderQueryError } = await supabaseAdmin
         .from("orders")
-        .select("*, order_items(*)")
+        .select("order_items(product_id)")
         .eq("id", orderId)
         .single();
 
@@ -79,34 +79,6 @@ export async function POST(req: Request) {
         }
       }
 
-      // 3. INTEGRAÇÃO COM MELHOR ENVIO
-      if (
-        order.shipping_type === "retirada" ||
-        order.shipping_type === "Entrega na cidade"
-      ) {
-        console.log(
-          `[WEBHOOK STRIPE] Pedido ${orderId} local. Nenhuma ação externa necessária.`,
-        );
-      } else {
-        console.log(
-          `[WEBHOOK STRIPE] Enviando pedido ${orderId} para o carrinho do Melhor Envio...`,
-        );
-        try {
-          await enviarParaCarrinhoMelhorEnvio(order);
-          console.log(
-            `[WEBHOOK STRIPE] Item adicionado ao carrinho do Melhor Envio com sucesso!`,
-          );
-        } catch (integrationError) {
-          console.error(
-            "❌ Falha na integração com Melhor Envio:",
-            integrationError,
-          );
-          await supabaseAdmin
-            .from("orders")
-            .update({ status: "Erro de Integração" })
-            .eq("id", orderId);
-        }
-      }
     } catch (error) {
       console.error("[WEBHOOK STRIPE] Erro interno:", error);
       return new NextResponse("Erro processando pedido", { status: 500 });

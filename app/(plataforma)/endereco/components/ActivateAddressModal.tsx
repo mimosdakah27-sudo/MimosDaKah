@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { CheckCircle2, Loader2, MapPin } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 interface ActivateAddressModalProps {
   isOpen: boolean;
@@ -22,8 +22,8 @@ interface ActivateAddressModalProps {
 
 export function ActivateAddressModal({ isOpen, onClose, onConfirm, isPending }: ActivateAddressModalProps) {
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
-      <AlertDialogContent className="sm:max-w-md rounded-3xl">
+    <AlertDialog open={isOpen} onOpenChange={(open) => { if (!open && !isPending) onClose(); }}>
+      <AlertDialogContent className="sm:max-w-md">
         <AlertDialogHeader className="space-y-3">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
             <CheckCircle2 className="h-8 w-8" />
@@ -33,8 +33,8 @@ export function ActivateAddressModal({ isOpen, onClose, onConfirm, isPending }: 
             Este endereço será usado automaticamente em seus próximos pedidos.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="grid grid-cols-2 gap-3 sm:space-x-0">
-          <AlertDialogCancel className="rounded-xl font-medium">Cancelar</AlertDialogCancel>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isPending} className="rounded-xl font-medium">Cancelar</AlertDialogCancel>
           <AlertDialogAction 
             className="rounded-xl font-bold bg-primary hover:bg-primary/90"
             onClick={(e) => { e.preventDefault(); onConfirm(); }}

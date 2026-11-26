@@ -18,13 +18,14 @@ export function OrderProductItem({
         <Image
           src={
             item.product_image ||
-            "/placeholder.png"
+            "/placeholder.svg"
           }
           alt={
             item.product_name ||
             "Produto"
           }
           fill
+          sizes="48px"
           className="object-cover"
         />
       </div>
@@ -36,7 +37,7 @@ export function OrderProductItem({
           </p>
 
           {isQuote && (
-            <span className="text-[9px] font-bold uppercase tracking-wide text-amber-600">
+            <span className="text-[9px] font-bold uppercase tracking-wide text-brand-action">
               Orçamento
             </span>
           )}

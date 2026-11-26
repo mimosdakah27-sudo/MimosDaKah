@@ -7,7 +7,6 @@ import {
   Package,
   Store,
   Truck,
-  AlertCircle,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { formatBRL } from "@/lib/utils";
 
+import { getLocalDeliveryFee } from "../../checkout-values";
 import { ShippingOptions } from "../ShippingOptions";
 
 type ShippingType =
@@ -31,7 +31,7 @@ type SelectedShippingRate = {
   id: string;
   price: number;
   delivery_time?: number;
-  type?: ShippingType;
+  type: ShippingType;
 };
 
 type ShippingRate = {
@@ -55,6 +55,9 @@ type StoreConfig = {
 type ShippingStepProps = {
   shippingRates?: ShippingRate[] | null;
   isLoadingShipping: boolean;
+  shippingError?: string;
+  retryShipping: () => void;
+  pickupAllowed: boolean;
 
   selectedRate:
     | SelectedShippingRate
@@ -80,7 +83,7 @@ const OTHER_CITY_ID = "other_city";
 
 export function ShippingStep({
   shippingRates,
-  isLoadingShipping,
+  isLoadingShipping, shippingError, retryShipping, pickupAllowed,
   selectedRate,
   setSelectedRate,
   storeConfig,
@@ -88,7 +91,7 @@ export function ShippingStep({
   onNext,
   onBack,
 }: ShippingStepProps) {
-  const allowPickup = Boolean(storeConfig?.allow_local_pickup);
+  const allowPickup = pickupAllowed && Boolean(storeConfig?.allow_local_pickup);
   const allowLocalDelivery = Boolean(storeConfig?.allow_local_delivery);
 
   const normalizedStoreZip =
@@ -118,22 +121,9 @@ export function ShippingStep({
       [],
     );
 
-  const localDeliveryOption =
-    useMemo<SelectedShippingRate>(
-      () => ({
-        id: LOCAL_ID,
-        price: Number(
-          storeConfig?.fixed_delivery_fee ??
-          storeConfig?.local_delivery_price ??
-          0,
-        ),
-        type: "local",
-      }),
-      [
-        storeConfig?.fixed_delivery_fee,
-        storeConfig?.local_delivery_price,
-      ],
-    );
+  const localFee = getLocalDeliveryFee(storeConfig ?? {});
+  const localDeliveryOption: SelectedShippingRate | null = localFee == null
+    ? null : { id: LOCAL_ID, price: localFee, type: "local" };
 
   /**
    * Seleciona retirada.
@@ -234,7 +224,7 @@ export function ShippingStep({
           )}
 
           {/* ENTREGA LOCAL */}
-          {allowLocalDelivery && isLocalZip && (
+          {allowLocalDelivery && isLocalZip && localDeliveryOption && (
             <button
               type="button"
               onClick={
@@ -270,13 +260,19 @@ export function ShippingStep({
             </button>
           )}
 
+          {allowLocalDelivery && isLocalZip && !localDeliveryOption && (
+            <p role="status" className="text-sm text-muted-foreground">
+              A taxa de entrega local está indisponível para este CEP.
+            </p>
+          )}
+
           {/* FRETES EXTERNOS (Se não for CEP local ou se entrega própria estiver desativada para CEP local) */}
           {(!isLocalZip || !allowLocalDelivery) && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4" />
 
-                <p className="font-semibold text-sm">
+                <p className="font-semibold text-base">
                   Fretes disponíveis
                 </p>
               </div>
@@ -288,6 +284,9 @@ export function ShippingStep({
                 isLoading={
                   isLoadingShipping
                 }
+                onBackToAddress={onBack}
+                errorMessage={shippingError}
+                onRetry={shippingError ? retryShipping : undefined}
                 selectedId={
                   selectedCalculatedId
                 }
@@ -298,37 +297,29 @@ export function ShippingStep({
             </div>
           )}
 
-          {!allowPickup && !allowLocalDelivery && !shippingRates?.length && !isLoadingShipping && (
-            <div className="flex flex-col items-center justify-center p-6 text-center space-y-2 border border-dashed rounded-lg">
-              <AlertCircle className="w-8 h-8 text-muted-foreground" />
-              <p className="font-medium text-sm text-foreground">Nenhuma opção de entrega disponível</p>
-              <p className="text-xs text-muted-foreground">A loja não possui retirada ou entrega local habilitadas e não há fretes externos disponíveis para este endereço.</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
-      <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onBack}
-          className="flex-1 gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-
-          Voltar
-        </Button>
-
+      <div className="grid justify-items-center gap-2">
         <Button
           type="button"
           onClick={onNext}
           disabled={!canContinue}
-          className="flex-1 gap-2"
+          className="flow-action" size="lg"
         >
           Continuar
 
           <ArrowRight className="w-4 h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          className="flow-action" size="lg"
+        >
+          <ArrowLeft className="w-4 h-4" />
+
+          Voltar
         </Button>
       </div>
     </div>

@@ -18,16 +18,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export function NotificationBell({ userId }: { userId?: string }) {
   const queryClient = useQueryClient();
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["notifications", userId],
     queryFn: async () => {
       if (!userId) return [];
-      const { data } = await supabaseBrowser()
+      const { data, error } = await supabaseBrowser()
         .from("notifications")
         .select("*")
         .eq("user_id", userId)
         .eq("read", false)
         .order("created_at", { ascending: false });
+      if (error) throw error;
       return data || [];
     },
     enabled: !!userId,
@@ -36,8 +37,10 @@ export function NotificationBell({ userId }: { userId?: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await supabaseBrowser().from("notifications").delete().eq("id", id);
+      const { error } = await supabaseBrowser().from("notifications").delete().eq("id", id);
+      if (error) throw error;
     },
+    onError: () => toast.error("Não foi possível excluir as notificações. Tente novamente."),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
     },
@@ -46,8 +49,10 @@ export function NotificationBell({ userId }: { userId?: string }) {
   const deleteAllMutation = useMutation({
     mutationFn: async () => {
       if (!userId) return;
-      await supabaseBrowser().from("notifications").delete().eq("user_id", userId);
+      const { error } = await supabaseBrowser().from("notifications").delete().eq("user_id", userId);
+      if (error) throw error;
     },
+    onError: () => toast.error("Não foi possível excluir as notificações. Tente novamente."),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications", userId] });
       toast.success("Todas as notificações foram limpas");
@@ -58,7 +63,7 @@ export function NotificationBell({ userId }: { userId?: string }) {
     if (!userId) return;
 
     if (
-      Notification.permission !== "granted" &&
+      "Notification" in window && Notification.permission !== "granted" &&
       Notification.permission !== "denied"
     ) {
       Notification.requestPermission();
@@ -83,7 +88,7 @@ export function NotificationBell({ userId }: { userId?: string }) {
 
           toast.info(newNotification.title || "Nova notificação!");
 
-          if (Notification.permission === "granted") {
+          if ("Notification" in window && Notification.permission === "granted") {
             new Notification(newNotification.title || "EcoStore", {
               body: newNotification.message,
               icon: "/icon-192.png",
@@ -107,7 +112,7 @@ export function NotificationBell({ userId }: { userId?: string }) {
       >
         <Bell className="h-5 w-5" />
         {notifications.length > 0 && (
-          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-background">
+          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center border-2 border-background">
             {notifications.length > 99 ? "99+" : notifications.length}
           </span>
         )}
@@ -126,11 +131,13 @@ export function NotificationBell({ userId }: { userId?: string }) {
 
         <ScrollArea className="max-h-75">
           <div className="flex flex-col overflow-auto max-h-75">
-            {notifications.length > 0 ? (
+            {isLoading ? <p role="status" className="p-4 text-sm">Carregando notificações…</p> : isError ? (
+              <div role="alert" className="p-4 text-sm">Não foi possível carregar as notificações. <button className="min-h-11 underline" onClick={() => refetch()}>Tentar novamente</button></div>
+            ) : notifications.length > 0 ? (
               notifications.map((n: any) => (
                 <div
                   key={n.id}
-                  className="relative flex flex-col gap-0.5 p-4 pr-10 border-b hover:bg-secondary/50 transition-colors"
+                  className="relative flex flex-col gap-0.5 p-4 pr-14 border-b hover:bg-secondary/50 transition-colors"
                 >
                   <button
                     onClick={(e) => {
@@ -138,7 +145,8 @@ export function NotificationBell({ userId }: { userId?: string }) {
                       deleteMutation.mutate(n.id);
                     }}
                     aria-label="Excluir notificação"
-                    className="absolute top-3 right-3 p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                    disabled={deleteAllMutation.isPending || deleteMutation.isPending}
+                    className="absolute top-1 right-1 grid size-11 place-items-center rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                     title="Excluir notificação"
                   >
                     <X className="h-4 w-4" />
@@ -168,8 +176,8 @@ export function NotificationBell({ userId }: { userId?: string }) {
           <div className="p-2 border-t bg-muted/30">
             <button
               onClick={() => deleteAllMutation.mutate()}
-              disabled={deleteAllMutation.isPending}
-              className="w-full py-2 px-3 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all flex items-center justify-center gap-2"
+              disabled={deleteAllMutation.isPending || deleteMutation.isPending}
+              className="w-full min-h-11 py-2 px-3 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all flex items-center justify-center gap-2"
             >
               {deleteAllMutation.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

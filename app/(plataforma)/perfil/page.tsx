@@ -1,9 +1,10 @@
 "use client";
 
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { LogIn, Search, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { BackButton } from "@/components/site/back-button";
@@ -12,18 +13,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { useStore } from "@/hooks/use-store";
 
 import { OrderCard } from "./components/OrderCard";
+import { isQuoteOrder, type OrderWithItems } from "./types/profile-type";
+import { whatsAppNumber } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "./hooks/use-profile";
 
 export default function ProfilePage() {
-  const { user, orders, handleRejectQuote } = useProfile();
+  const { user, orders, handleRejectQuote, rejectingId, isInitialLoading, loadFailed, retry } = useProfile();
 
   const { config } = useStore();
 
   const { profile } = useAuth();
 
   const searchParams = useSearchParams();
-
-  const router = useRouter();
 
   const pathname = usePathname();
 
@@ -45,7 +47,7 @@ export default function ProfilePage() {
 
     const query = params.toString();
 
-    router.replace(query ? `${pathname}?${query}` : pathname);
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
   };
 
   const filteredOrders = orders.filter((order) => {
@@ -60,10 +62,8 @@ export default function ProfilePage() {
    * Abre o WhatsApp da loja com
    * informações do pedido.
    */
-  const handleWhatsAppSupport = (order: any) => {
-    const phone = config?.phone || "";
-
-    const cleanPhone = phone.replace(/\D/g, "");
+  const handleWhatsAppSupport = (order: OrderWithItems) => {
+    const cleanPhone = whatsAppNumber(config?.phone);
 
     if (!cleanPhone) {
       toast.error("O WhatsApp da loja não está configurado.");
@@ -74,11 +74,7 @@ export default function ProfilePage() {
 
     const orderIdShort = order.id.substring(0, 8);
 
-    const isQuote =
-      Array.isArray(order.order_items) &&
-      order.order_items.some(
-        (item: any) => item.products?.tipo_venda === "orcamento",
-      );
+    const isQuote = isQuoteOrder(order);
 
     const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -111,19 +107,25 @@ Poderia me ajudar com os detalhes do orçamento?`
 Poderia me ajudar?`;
 
     window.open(
-      `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`,
+      `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`,
       "_blank",
     );
   };
 
   const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
 
+  if (isInitialLoading) return (
+    <div role="status" aria-label="Carregando pedidos" className="mx-auto max-w-4xl space-y-4 py-6">
+      <Skeleton className="h-9 w-48" /><Skeleton className="h-36 w-full" />
+    </div>
+  );
+
   return (
     <div className="max-w-4xl mx-auto py-6 space-y-8">
       <BackButton />
 
       <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="page-title">
           Meu perfil
         </h1>
 
@@ -162,17 +164,17 @@ Poderia me ajudar?`;
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 
-              <input
+              <Input
                 type="text"
-                placeholder="Buscar por código..."
+                aria-label="Buscar pedido por código" placeholder="Buscar por código..."
                 value={searchOrder}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-9 pr-8 text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="pl-9 pr-8"
               />
 
               {searchOrder && (
                 <button
-                  onClick={() => handleSearchChange("")}
+                  aria-label="Limpar busca" onClick={() => handleSearchChange("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -181,7 +183,12 @@ Poderia me ajudar?`;
             </div>
           </div>
 
-          {orders.length === 0 ? (
+          {loadFailed ? (
+            <div role="alert" className="space-y-2 py-6">
+              <p>Não foi possível carregar seus pedidos.</p>
+              <Button variant="outline" onClick={() => void retry()}>Tentar novamente</Button>
+            </div>
+          ) : orders.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground font-medium text-sm">
                 Você ainda não fez nenhum pedido.
@@ -207,8 +214,10 @@ Poderia me ajudar?`;
                 <OrderCard
                   key={order.id}
                   order={order}
+                  storeConfig={config}
                   onWhatsAppSupport={handleWhatsAppSupport}
                   onRejectOrder={handleRejectQuote}
+                  rejecting={rejectingId === order.id}
                 />
               ))}
             </div>

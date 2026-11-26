@@ -1,5 +1,7 @@
-import { HomePage as PageHome } from "./home"
+import { HomePage } from "./home";
 
-export default function HomePage() {
-    return <PageHome />
+export default function Page(props: {
+  searchParams: Promise<{ pagina?: string | string[] }>;
+}) {
+  return <HomePage {...props} />;
 }

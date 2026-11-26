@@ -70,7 +70,7 @@ export const useCart = create<CartState>()(
         const safeQuantity = Number(quantity);
 
         if (
-          !Number.isFinite(safeQuantity) ||
+          !Number.isSafeInteger(safeQuantity) ||
           safeQuantity <= 0
         ) {
           return;
@@ -95,6 +95,7 @@ export const useCart = create<CartState>()(
 
           nextItems[existingIndex] = {
             ...nextItems[existingIndex],
+            product,
             quantity:
               nextItems[existingIndex].quantity +
               safeQuantity,
@@ -157,7 +158,7 @@ export const useCart = create<CartState>()(
           );
 
           if (
-            !Number.isFinite(quantity) ||
+            !Number.isSafeInteger(quantity) ||
             quantity <= 0
           ) {
             continue;
@@ -182,6 +183,7 @@ export const useCart = create<CartState>()(
           if (existingIndex !== -1) {
             currentItems[existingIndex] = {
               ...currentItems[existingIndex],
+              product: newItem.product,
               quantity:
                 currentItems[existingIndex]
                   .quantity + quantity,
@@ -250,7 +252,7 @@ export const useCart = create<CartState>()(
           Number(quantity);
 
         if (
-          !Number.isFinite(
+          !Number.isSafeInteger(
             safeQuantity
           )
         ) {

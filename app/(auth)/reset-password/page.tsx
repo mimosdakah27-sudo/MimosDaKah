@@ -23,7 +23,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="w-full max-w-sm mx-auto space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Nova Senha</h1>
+        <h1 className="page-title">Nova Senha</h1>
         <p className="text-sm text-muted-foreground">
           Escolha uma nova senha para sua conta.
         </p>
@@ -74,11 +74,11 @@ export default function ResetPasswordPage() {
           {rules.map((rule, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
               {rule.valid ? (
-                <Check size={16} className="text-emerald-600" />
+                <Check size={16} className="text-success" />
               ) : (
                 <X size={16} className="text-muted-foreground" />
               )}
-              <span className={rule.valid ? "text-emerald-700" : "text-muted-foreground"}>
+              <span className={rule.valid ? "text-success" : "text-muted-foreground"}>
                 {rule.label}
               </span>
             </div>

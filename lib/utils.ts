@@ -5,11 +5,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const real = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
 export function formatBRL(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(value)
+  return real.format(value);
+}
+
+export function whatsAppNumber(phone?: string | null) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  return digits.length === 10 || digits.length === 11 ? "55" + digits : digits;
 }
 
 // Converte um número float do banco ou string de digitação em BRL aceitando o dígito 0 perfeitamente

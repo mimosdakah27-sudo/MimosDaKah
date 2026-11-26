@@ -1,23 +1,19 @@
-import { getAllProducts } from "../services/get-home-data";
+import { getFeaturedProducts, getProductPage, PAGE_SIZE } from "../services/get-home-data";
 
-export async function getHomeContent() {
-  try {
-    const products = await getAllProducts();
-    
-    const featured = products.filter((p) => p.destaque);
-    const currentYear = new Date().getFullYear();
+export function parseCatalogPage(value?: string | string[]) {
+  const page = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : 1;
+  return page >= 1 && page <= Math.floor(2147483647 / PAGE_SIZE) ? page : 1;
+}
 
-    return {
-      products,
-      featured,
-      currentYear
-    };
-  } catch (error) {
-    console.error("Erro no getHomeContent:", error);
-    return {
-      products: [],
-      featured: [],
-      currentYear: new Date().getFullYear()
-    };
-  }
+export function getHomeContent(page: number) {
+  return {
+    catalog: getProductPage(page).catch(() => {
+      console.error("Falha ao carregar o catálogo.");
+      return null;
+    }),
+    featured: getFeaturedProducts().catch(() => {
+      console.error("Falha ao carregar os destaques.");
+      return [];
+    }),
+  };
 }

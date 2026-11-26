@@ -1,8 +1,9 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { CatalogImage } from "@/components/site/catalog-image";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Minus, Plus, Trash2, X, MessageCircle, HelpCircle } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/store/cart";
 import { formatBRL } from "@/lib/utils";
@@ -21,32 +22,16 @@ export function CartDrawer() {
   const totalQty = items.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
-    <AnimatePresence mode="wait">
-      {open && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
-          />
-
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 280 }}
-            className="fixed right-0 top-0 z-50 h-full w-full max-w-md bg-card border-l border-border flex flex-col shadow-lg"
-          >
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetContent side="right" showCloseButton={false} className="max-w-md gap-0 bg-card data-[side=right]:w-full">
             <header className="flex items-center justify-between p-6 border-b border-border">
               <div>
-                <h2 className="text-xl font-bold">Sacola</h2>
+                <SheetTitle className="text-xl font-bold">Sacola</SheetTitle>
                 <p className="text-sm text-muted-foreground">{totalQty} {totalQty === 1 ? "item" : "itens"}</p>
               </div>
               <button 
                 onClick={() => setOpen(false)} 
-                className="h-9 w-9 rounded-md hover:bg-accent flex items-center justify-center" 
+                className="size-11 rounded-md hover:bg-accent flex items-center justify-center"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
@@ -73,7 +58,7 @@ export function CartDrawer() {
                       className="flex gap-3 p-3 rounded-xl border bg-card"
                     >
                       <div className="relative h-20 w-16 rounded-lg overflow-hidden bg-muted shrink-0">
-                        <Image src={item.product.imagem_url} alt={item.product.nome} fill sizes="64px" className="object-cover" />
+                        <CatalogImage src={item.product.imagem_url} alt={item.product.nome} compact sizes="64px" className="object-cover" />
                       </div>
                       <div className="flex-1 min-w-0 flex flex-col justify-between">
                         <div>
@@ -82,12 +67,12 @@ export function CartDrawer() {
                           </div>
 
                           {tipoVenda === "whatsapp_finalizacao" && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded mt-0.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-success/10 text-success px-1.5 py-0.5 rounded mt-0.5">
                               <MessageCircle className="h-3 w-3" /> Finalização via WhatsApp
                             </span>
                           )}
                           {tipoVenda === "orcamento" && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded mt-0.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-brand-tint text-brand-action px-1.5 py-0.5 rounded mt-0.5">
                               <HelpCircle className="h-3 w-3" /> Sob Orçamento
                             </span>
                           )}
@@ -110,25 +95,27 @@ export function CartDrawer() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between mt-2">
+                        <div className="flex flex-wrap items-center justify-between gap-1 mt-2">
                           <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
                             <button 
+                              aria-label="Diminuir quantidade"
                               onClick={() => updateQty(item.product.id, item.quantity - 1, item.product.variant_id)} 
-                              className="h-6 w-6 rounded hover:bg-background flex items-center justify-center text-foreground"
+                              className="size-11 rounded hover:bg-background flex items-center justify-center text-foreground"
                             >
                               <Minus className="h-3 w-3" />
                             </button>
                             <span className="w-6 text-center text-xs font-semibold">{item.quantity}</span>
                             <button 
+                              aria-label="Aumentar quantidade"
                               onClick={() => updateQty(item.product.id, item.quantity + 1, item.product.variant_id)} 
-                              className="h-6 w-6 rounded hover:bg-background flex items-center justify-center text-foreground"
+                              className="size-11 rounded hover:bg-background flex items-center justify-center text-foreground"
                             >
                               <Plus className="h-3 w-3" />
                             </button>
                           </div>
                           <button 
                             onClick={() => remove(item.product.id, item.product.variant_id)} 
-                            className="h-7 w-7 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground flex items-center justify-center transition-colors" 
+                            className="size-11 rounded hover:bg-destructive/10 hover:text-destructive text-muted-foreground flex items-center justify-center transition-colors"
                             aria-label="Remover"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -153,17 +140,15 @@ export function CartDrawer() {
                     <span className="font-bold text-xl text-primary">{formatBRL(subtotal)}</span>
                   </div>
                 </div>
-                <button
+                <Button size="lg"
                   onClick={() => { setOpen(false); router.push("/checkout"); }}
-                  className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+                  className="flow-action"
                 >
-                  Finalizar compra
-                </button>
+                  Continuar pedido
+                </Button>
               </footer>
             )}
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+      </SheetContent>
+    </Sheet>
   );
 }

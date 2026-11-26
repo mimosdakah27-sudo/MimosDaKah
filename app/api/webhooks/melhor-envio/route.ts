@@ -1,14 +1,19 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   try {
-    const payload = await req.json();
-
-    console.log(
-      "[WEBHOOK DEBUG] Payload recebido:",
-      JSON.stringify(payload, null, 2),
-    );
+    const secret = process.env.MELHOR_ENVIO_CLIENT_SECRET;
+    if (!secret) return new NextResponse(null, { status: 503 });
+    const raw = await req.text();
+    const signature = req.headers.get("X-ME-Signature") || "";
+    const received = Buffer.from(signature, /^[0-9a-f]{64}$/i.test(signature) ? "hex" : "base64");
+    const expected = createHmac("sha256", secret).update(raw).digest();
+    if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+      return new NextResponse(null, { status: 401 });
+    }
+    const payload = JSON.parse(raw);
 
     const event = payload.event;
     const data = payload.data;

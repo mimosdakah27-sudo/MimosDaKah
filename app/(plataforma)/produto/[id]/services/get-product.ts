@@ -12,9 +12,10 @@ export async function getFullProductDetails(id: string) {
           *,
           product_images ( id, url, position ),
           product_variants ( id, name, material, is_principal, imagens ),
-          reviews ( id, user_id, rating, comment, created_at )
+          reviews ( * )
         `)
         .eq("id", id)
+        .eq("ativo", true)
         .order("position", { referencedTable: "product_images", ascending: true })
         .order("created_at", { referencedTable: "reviews", ascending: false })
         .maybeSingle();

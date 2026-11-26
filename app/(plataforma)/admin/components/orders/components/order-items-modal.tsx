@@ -14,7 +14,7 @@ export function OrderItemsModal({ order, isModalOpen, setIsModalOpen }: any) {
           nativeButton={true}
             variant="outline"
             size="sm"
-            className="w-full h-8 text-xs flex items-center justify-between gap-2"
+            className="w-full justify-between gap-2"
           >
             <span className="flex items-center gap-1.5 truncate">
               <Package size={14} /> Ver Mimos ({order.order_items.length})
@@ -24,13 +24,14 @@ export function OrderItemsModal({ order, isModalOpen, setIsModalOpen }: any) {
         }
       />
 
-      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[85vh] rounded-xl sm:rounded-lg overflow-y-auto p-4 sm:p-6">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md max-h-[85vh] rounded-[var(--panel-radius)] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="text-sm font-bold flex items-center gap-2">
             <Package size={16} /> Itens do Pedido #{order.id.slice(0, 8)}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-2.5 mt-2">
+          {!order.order_items.length && <p className="text-sm text-muted-foreground">Nenhum item neste pedido.</p>}
           {order.order_items.map((i: any) => (
             <div
               key={i.id}

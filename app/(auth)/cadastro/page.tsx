@@ -100,7 +100,7 @@ export default function SignupForm() {
   return (
     <div className="w-full max-w-sm mx-auto space-y-10 py-10">
       <div className="space-y-2 text-center lg:text-left">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+        <h1 className="page-title">
           Criar conta
         </h1>
 

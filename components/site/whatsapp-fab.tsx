@@ -1,16 +1,18 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { useStore } from "@/hooks/use-store";
 import { useAuth } from "@/hooks/use-auth";
 import { unmask } from "@/lib/utils";
 
 export function WhatsAppFab() {
+  const pathname = usePathname();
+  const inCatalog = pathname === "/" || pathname.startsWith("/produto/");
   const { config, isLoading: isStoreLoading } = useStore();
   const { profile, user, loading: isAuthLoading } = useAuth();
 
-  // Se estiver carregando a loja ou o telefone não estiver configurado, não mostra o botão
-  if (isStoreLoading || !config?.phone) {
+  if (!inCatalog || isStoreLoading || !config?.phone) {
     return null;
   }
 
@@ -28,10 +30,10 @@ export function WhatsAppFab() {
 
   return (
     <a
-      href={`https://wa.me/55${cleanPhone}?text=${encodedMessage}`}
+      href={`https://wa.me/${[10, 11].includes(cleanPhone.length) ? '55' + cleanPhone : cleanPhone}?text=${encodedMessage}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-[#25D366] opacity-70 backdrop-blur-md text-white flex items-center justify-center shadow-lg hover:opacity-100 hover:scale-110 transition-all duration-300"
+      className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-brand-action text-brand-action-foreground flex items-center justify-center shadow-lg hover:bg-brand-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-action motion-safe:transition-colors"
       aria-label="WhatsApp"
     >
       <MessageCircle className="h-7 w-7" />

@@ -8,6 +8,14 @@ export async function middleware(req: NextRequest) {
     request: { headers: req.headers },
   });
 
+  // Visitantes do catálogo não precisam aguardar uma verificação remota de sessão.
+  const protectedRoute = ["/admin", "/configuracoes", "/endereco"].some(
+    route => path === route || path.startsWith(route + "/")
+  );
+  if (!protectedRoute && !req.cookies.getAll().some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name))) {
+    return response;
+  }
+
   const supabase = createClientForMiddleware(req, response);
 
   // 1. VERIFICAÇÃO DE SESSÃO

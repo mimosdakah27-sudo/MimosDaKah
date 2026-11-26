@@ -11,36 +11,18 @@ const supabase = supabaseBrowser() as any;
 // BUSCAS
 // ============================================================
 
-export async function getAdminDashboardData() {
-  const [productsRes, ordersRes] =
-    await Promise.all([
-      supabase
-        .from("products")
-        .select("*")
-        .order("created_at", {
-          ascending: false,
-        }),
-
-      supabase
-        .from("orders")
-        .select("*, order_items(*)")
-        .order("created_at", {
-          ascending: false,
-        }),
-    ]);
-
-  if (productsRes.error) {
-    throw productsRes.error;
+export async function getAdminDashboardData(tab: "produtos" | "pedidos") {
+  if (tab === "produtos") {
+    const { data, error } = await supabase.from("products").select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return { products: data, orders: [] };
   }
-
-  if (ordersRes.error) {
-    throw ordersRes.error;
-  }
-
-  return {
-    products: productsRes.data ?? [],
-    orders: ordersRes.data ?? [],
-  };
+  // O checkout pode estar retomando uma gravação interrompida antes de salvar os itens.
+  const { data, error } = await supabase.from("orders").select("*, order_items!inner(*)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return { products: [], orders: data };
 }
 
 // ============================================================

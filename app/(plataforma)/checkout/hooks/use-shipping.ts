@@ -1,63 +1,22 @@
 import { getShippingRates } from "@/lib/actions/shipping";
 import { useQuery } from "@tanstack/react-query";
 
-function normalizeZip(zip?: string) {
-  return String(zip ?? "").replace(/\D/g, "");
-}
+type ShippingItem = { product: { id: string }; quantity: number };
 
 export function useShipping(
   originZip: string | undefined,
   destinationZip: string | undefined,
-  items: any[]
+  items: ShippingItem[],
 ) {
-  const normalizedOriginZip = normalizeZip(originZip);
-  const normalizedDestinationZip =
-    normalizeZip(destinationZip);
-
-  const itemKeys = items.map(
-    (item) =>
-      `${item.product.id}:${item.quantity}`
-  );
-
-  /**
-   * O frete do Melhor Envio só deve ser calculado
-   * quando o CEP do cliente for diferente do CEP
-   * da loja.
-   */
-  const isLocalZip =
-    normalizedOriginZip.length === 8 &&
-    normalizedDestinationZip.length === 8 &&
-    normalizedOriginZip ===
-      normalizedDestinationZip;
-
-  const shouldCalculateShipping =
-    normalizedOriginZip.length === 8 &&
-    normalizedDestinationZip.length === 8 &&
-    items.length > 0 &&
-    !isLocalZip;
+  const origin = originZip?.replace(/\D/g, "") ?? "";
+  const destination = destinationZip?.replace(/\D/g, "") ?? "";
+  const shippingItems = items.map(({ product, quantity }) => ({ product: { id: product.id }, quantity }));
 
   return useQuery({
-    queryKey: [
-      "shipping-rates",
-      normalizedOriginZip,
-      normalizedDestinationZip,
-      itemKeys,
-    ],
-
-    queryFn: async () => {
-      if (!shouldCalculateShipping) {
-        return null;
-      }
-
-      return getShippingRates(
-        normalizedOriginZip,
-        normalizedDestinationZip,
-        items
-      );
-    },
-
-    enabled: shouldCalculateShipping,
-
-    staleTime: 1000 * 60 * 5,
+    queryKey: ["shipping-rates", origin, destination, shippingItems],
+    queryFn: () => getShippingRates(origin, destination, shippingItems),
+    enabled: origin.length === 8 && destination.length === 8 && shippingItems.length > 0,
+    staleTime: (query) => query.state.data?.ok ? 5 * 60 * 1000 : 0,
+    retry: false,
   });
 }

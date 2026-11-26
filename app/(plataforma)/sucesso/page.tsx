@@ -3,7 +3,6 @@
 import { CheckCircle2, Home, MessageCircle, UserRound } from "lucide-react";
 import Link from "next/link";
 
-import { ClearCartTrigger } from "@/components/site/clear-cart-trigger";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -32,7 +31,7 @@ export default async function SuccessPage({
             </div>
 
             <div className="space-y-1">
-              <h1 className="text-lg font-bold text-foreground">
+              <h1 className="page-title">
                 Pedido não encontrado
               </h1>
 
@@ -65,7 +64,7 @@ export default async function SuccessPage({
             </div>
 
             <div className="space-y-1">
-              <h1 className="text-lg font-bold text-foreground">
+              <h1 className="page-title">
                 Pedido não localizado
               </h1>
 
@@ -90,7 +89,6 @@ export default async function SuccessPage({
 
   return (
     <div className="w-full max-w-sm mx-auto px-2 py-2">
-      <ClearCartTrigger />
 
       <Card className="overflow-hidden shadow-sm">
         <CardContent className="pt-5 pb-5 px-4 text-center">
@@ -100,7 +98,7 @@ export default async function SuccessPage({
           </div>
 
           {/* Título */}
-          <h1 className="text-lg font-bold tracking-tight">
+          <h1 className="page-title">
             Pedido recebido!
           </h1>
 
@@ -121,11 +119,11 @@ export default async function SuccessPage({
           </div>
 
           {/* WhatsApp */}
-          <div className="mt-4 w-full rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 space-y-2.5">
+          <div className="mt-4 w-full space-y-2.5 rounded-xl border border-border bg-brand-surface p-3">
             <div className="flex items-center justify-center gap-1.5">
-              <MessageCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <MessageCircle className="h-4 w-4 text-brand-action" />
 
-              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+              <p className="text-xs font-bold text-brand-ink">
                 Envie seu pedido pelo WhatsApp
               </p>
             </div>
@@ -135,11 +133,13 @@ export default async function SuccessPage({
             </p>
 
             <WhatsAppActionButton
+              storePhone={order.storePhone}
               products={orderItems}
               orderId={orderId}
               order={{
                 total: order.total,
                 shipping_cost: order.shipping_cost,
+                name: order.name,
               }}
             />
           </div>
@@ -154,7 +154,7 @@ export default async function SuccessPage({
 
           {/* Navegação */}
           <div className="mt-4 space-y-2">
-            <Button
+            {order.isOwner && <Button
               render={<Link href="/perfil" />}
               nativeButton={false}
               variant="outline"
@@ -162,7 +162,7 @@ export default async function SuccessPage({
             >
               <UserRound className="h-3.5 w-3.5 mr-1.5" />
               Acessar meu perfil
-            </Button>
+            </Button>}
 
             <Link
               href="/"

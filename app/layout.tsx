@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Outfit, Public_Sans } from "next/font/google";
+import { Outfit, Public_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { CartDrawer } from "@/components/site/cart-drawer";
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
       {
         url: "/og-image.jpg",
         width: 1200,
-        height: 630,
+        height: 800,
         alt: "Mimos da Kah - Presentes, Personalizados e Variedades",
       },
     ],
@@ -83,7 +83,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
     shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    apple: "/brand-icon.png",
   },
 };
 
@@ -96,15 +96,15 @@ export default function RootLayout({
     <html lang="pt-BR" className={cn("system", "scroll-smooth", "font-sans", outfit.variable, publicSansHeading.variable)}>
       <head>
         {/* Otimização de LCP: Conecta antecipadamente ao Supabase para carregar imagens e dados mais rápido */}
-        <link rel="preconnect" href="https://trmbmnjpylozykcyxcuc.supabase.co" />
-        <link rel="dns-prefetch" href="https://trmbmnjpylozykcyxcuc.supabase.co" />
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
       </head>
       <body className="font-sans antialiased">
         <QueryProvider>
           <AuthProvider>
             <StoreProvider>
               <TooltipProvider>
-                <main className="min-h-[calc(100vh-80px)]">{children}</main>
+                {children}
               </TooltipProvider>
               <CartDrawer />
               <WhatsAppFab />

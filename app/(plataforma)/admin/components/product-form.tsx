@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 import { 
@@ -41,6 +41,8 @@ const STEPS = [
 
 export function ProductForm(props: ProductFormProps) {
   const { onClose, product, onSaved } = props;
+  const editorTitle = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { editorTitle.current?.focus(); }, []);
   const [currentStep, setCurrentStep] = useState(1);
 
   const { initialValues, saving, isEdit, handleSaveSubmit } = useAdminProduct(product, onSaved);
@@ -115,24 +117,24 @@ export function ProductForm(props: ProductFormProps) {
   };
 
   return (
-    <Card className="rounded-xl sm:rounded-2xl border border-border bg-card shadow-lg animate-fade-in w-full mx-auto">
-      <CardHeader className="border-b border-border/50 p-3 sm:p-5 pb-3">
+    <Card className="mx-auto w-full max-w-4xl gap-0 py-0">
+      <CardHeader className="border-b bg-brand-surface p-4 sm:p-6">
         <div className="flex items-center justify-between mb-2 sm:mb-3">
-          <CardTitle className="text-base sm:text-lg font-bold text-foreground">
+          <h2 ref={editorTitle} tabIndex={-1} className="text-xl font-semibold text-brand-ink outline-none">
             {isEdit ? "Editar mimo" : "Novo mimo"}
-          </CardTitle>
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors px-1 py-0.5 rounded"
+            className="flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm text-brand-muted hover:bg-brand-tint"
             disabled={saving}
           >
-            <X className="h-4 w-4" /> cancelar
+            <X className="h-4 w-4" /> Cancelar
           </button>
         </div>
 
         {/* Stepper Header Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {STEPS.map((step) => {
             const isActive = currentStep === step.id;
             const isPassed = currentStep > step.id;
@@ -140,6 +142,7 @@ export function ProductForm(props: ProductFormProps) {
             return (
               <button
                 key={step.id}
+                aria-current={isActive ? "step" : undefined}
                 type="button"
                 onClick={async () => {
                   if (step.id < currentStep) {
@@ -150,8 +153,8 @@ export function ProductForm(props: ProductFormProps) {
                   }
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium transition-all shrink-0 border whitespace-nowrap",
-                  isActive && "bg-primary text-white border-primary shadow-xs",
+                  "flex min-h-10 items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left text-xs font-medium sm:text-sm",
+                  isActive && "bg-primary text-primary-foreground border-primary",
                   isPassed && "bg-secondary/80 text-foreground border-border/80",
                   !isActive && !isPassed && "bg-muted/40 text-muted-foreground border-border/40 hover:bg-muted"
                 )}
@@ -164,7 +167,7 @@ export function ProductForm(props: ProductFormProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="p-3 sm:p-5 pt-3 sm:pt-4">
+      <CardContent className="p-4 sm:p-6">
         <FormProvider {...methods}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
             {currentStep === 1 && <StepBasicInfo />}
@@ -179,7 +182,7 @@ export function ProductForm(props: ProductFormProps) {
                   type="button"
                   variant="outline"
                   onClick={handlePrev}
-                  className="rounded-lg h-9 px-3 sm:px-4 text-xs gap-1 sm:gap-2 border-border"
+                  className="gap-2"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" /> Voltar
                 </Button>
@@ -196,7 +199,7 @@ export function ProductForm(props: ProductFormProps) {
                   <Button
                     type="button"
                     onClick={handleNext}
-                    className="rounded-lg h-9 px-4 sm:px-5 bg-primary hover:bg-primary/95 text-white font-bold text-xs gap-1.5 shadow-xs whitespace-nowrap"
+                    className="min-w-28"
                   >
                     Continuar <ChevronRight className="h-3.5 w-3.5" />
                   </Button>
@@ -205,7 +208,7 @@ export function ProductForm(props: ProductFormProps) {
                     type="button"
                     disabled={saving}
                     onClick={handleSubmit(onSubmit)}
-                    className="rounded-lg h-9 px-5 sm:px-6 bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-xs whitespace-nowrap"
+                    className="min-w-28"
                   >
                     {saving ? "Salvando..." : "Salvar alterações"}
                   </Button>

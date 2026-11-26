@@ -128,7 +128,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
 
         {initialReviews.length > 0 && (
           <div className="flex items-center gap-1.5 sm:gap-2 bg-muted/50 px-3 py-1.5 rounded-full border border-border/60 shrink-0 whitespace-nowrap">
-            <Star className="h-4 w-4 fill-primary text-primary shrink-0" />
+            <Star className="h-4 w-4 fill-brand-action text-brand-action shrink-0" />
             <span className="font-bold text-sm text-foreground">
               {avg.toFixed(1)}
             </span>
@@ -152,7 +152,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                   {[1, 2, 3, 4, 5].map((n) => (
                     <Star
                       key={n}
-                      className={`h-4 w-4 ${n <= userReview.rating ? "fill-primary text-primary" : "text-muted"}`}
+                      className={`h-4 w-4 ${n <= userReview.rating ? "fill-brand-action text-brand-action" : "text-brand-control"}`}
                     />
                   ))}
                 </div>
@@ -196,12 +196,13 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                       onClick={() => setRating(n)}
                       onMouseEnter={() => setHoverRating(n)}
                       onMouseLeave={() => setHoverRating(0)}
-                      className="p-1 transition-transform hover:scale-110"
+                      className="rounded-md p-1 focus-visible:outline-2 focus-visible:outline-brand-action motion-safe:transition-transform motion-safe:hover:scale-110"
+                      aria-pressed={n === rating}
                       aria-label={`Avaliar com ${n} estrelas`}
                       disabled={loading || isPending}
                     >
                       <Star
-                        className={`h-6 w-6 transition-colors ${n <= (hoverRating || rating) ? "fill-primary text-primary" : "text-muted fill-transparent"}`}
+                        className={`h-6 w-6 transition-colors ${n <= (hoverRating || rating) ? "fill-brand-action text-brand-action" : "text-brand-control fill-transparent"}`}
                       />
                     </button>
                   ))}
@@ -230,7 +231,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                     <X className="h-4 w-4 mr-2" /> Cancelar
                   </Button>
                 )}
-                <Button onClick={handleSubmit} disabled={isSubmitDisabled}>
+                <Button onClick={handleSubmit} disabled={isSubmitDisabled} className="bg-brand-action text-brand-action-foreground hover:bg-brand-action-hover">
                   {loading || isPending
                     ? "Salvando..."
                     : userReview
@@ -248,7 +249,8 @@ export function ProductReviews({ productId, initialReviews }: Props) {
           </p>
           <div>
             <Button
-            nativeButton={false}
+              nativeButton={false}
+              className="bg-brand-action text-brand-action-foreground hover:bg-brand-action-hover"
               render={
                 <Link href={loginUrl} className="gap-2">
                   <LogIn className="h-4 w-4" />
@@ -280,7 +282,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star
                     key={n}
-                    className={`h-3.5 w-3.5 ${n <= r.rating ? "fill-primary text-primary" : "text-muted"}`}
+                    className={`h-3.5 w-3.5 ${n <= r.rating ? "fill-brand-action text-brand-action" : "text-brand-control"}`}
                   />
                 ))}
               </div>
@@ -291,8 +293,8 @@ export function ProductReviews({ productId, initialReviews }: Props) {
           ))}
       </div>
 
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent>
+      <Dialog open={isDeleteModalOpen} onOpenChange={(open) => { if (!loading && !isPending) setIsDeleteModalOpen(open); }}>
+        <DialogContent showCloseButton={!loading && !isPending}>
           <DialogHeader>
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-2">
               <AlertTriangle className="h-6 w-6" />
@@ -306,7 +308,7 @@ export function ProductReviews({ productId, initialReviews }: Props) {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="gap-2 sm:justify-center pt-2">
+          <DialogFooter>
             <Button
               variant="outline"
               className="flex-1"

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import CheckoutLoading from "./loading";
 import { Edit2, MessageCircle, Loader2 } from "lucide-react";
 
 import { BackButton } from "@/components/site/back-button";
@@ -17,6 +19,7 @@ export default function CheckoutPage() {
   const {
     isMounted,
     isSubmitting,
+    receiptHref,
     step,
     changeStep,
     customerData,
@@ -29,81 +32,66 @@ export default function CheckoutPage() {
     isLoadingShipping,
     storeConfig,
     items,
+    subtotal,
     shippingPrice,
     total,
-    handleFetchCep,
+    isGuest, canVisitStep, isLookingUpCep, cepMessage, isSavingAddress, shippingError, retryShipping,
     handleAddressNext,
     handleFinalizeOrder,
   } = useCheckout();
 
+  if (receiptHref) {
+    return (
+      <Card className="mx-auto max-w-lg">
+        <CardContent className="space-y-4 text-center">
+          <h1 className="page-title">Pedido registrado</h1>
+          <a href={receiptHref} className="font-semibold text-brand-action underline">Continuar para o WhatsApp</a>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!isMounted) {
-    return null;
+    return <CheckoutLoading />;
+  }
+
+  if (!items.length) {
+    if (isSubmitting) return <CheckoutLoading />;
+    return (
+      <Card className="max-w-lg mx-auto">
+        <CardContent className="p-6 space-y-3">
+          <h1 className="page-title">Seu pedido está vazio</h1>
+          <p className="text-sm text-muted-foreground">Escolha um produto no catálogo para começar.</p>
+          <Link href="/" className="text-sm font-medium text-primary underline">Ver catálogo</Link>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
-    <div className="w-full space-y-4">
-      <BackButton />
+    <div className="mx-auto max-w-6xl space-y-6">
+      {!isSubmitting && <BackButton />}
 
       <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">
-            Checkout
+          <h1 className="page-title">
+            Fazer pedido
           </h1>
 
           <p className="text-xs text-muted-foreground">
-            Preencha seus dados para finalizar o pedido
+            Informe seus dados e revise a entrega antes de confirmar.
           </p>
         </div>
 
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg border text-[11px] font-medium overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => changeStep("customer")}
-            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
-              step === "customer"
-                ? "bg-background shadow-xs font-bold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            1. Contato
-          </button>
-
-          <button
-            type="button"
-            onClick={() => changeStep("address")}
-            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
-              step === "address"
-                ? "bg-background shadow-xs font-bold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            2. Endereço
-          </button>
-
-          <button
-            type="button"
-            onClick={() => changeStep("shipping")}
-            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
-              step === "shipping"
-                ? "bg-background shadow-xs font-bold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            3. Frete
-          </button>
-
-          <button
-            type="button"
-            onClick={() => changeStep("review")}
-            className={`px-2 py-1 rounded cursor-pointer transition-colors whitespace-nowrap ${
-              step === "review"
-                ? "bg-background shadow-xs font-bold text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            4. Revisão
-          </button>
-        </div>
+        <nav aria-label="Etapas do pedido" className="grid max-w-full grid-cols-4 gap-1 rounded-xl border bg-brand-surface p-1">
+          {([["customer", "Contato"], ["address", "Endereço"], ["shipping", "Frete"], ["review", "Revisão"]] as const).map(([key, label], index) => (
+            <button key={key} type="button" onClick={() => changeStep(key)}
+              disabled={!canVisitStep(key) || isSubmitting} aria-current={step === key ? "step" : undefined}
+              className="min-h-10 rounded-lg px-1.5 text-xs font-medium text-brand-muted hover:bg-brand-tint focus-visible:outline-brand-action disabled:opacity-60 aria-[current=step]:bg-primary aria-[current=step]:text-primary-foreground sm:px-3">
+              {index + 1}. {label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -112,7 +100,7 @@ export default function CheckoutPage() {
             <CustomerStep
               customerData={customerData}
               setCustomerData={setCustomerData}
-              addressData={addressData}
+              isGuest={isGuest}
               onNext={() => changeStep("address")}
             />
           )}
@@ -121,8 +109,7 @@ export default function CheckoutPage() {
             <AddressStep
               addressData={addressData}
               setAddressData={setAddressData}
-              customerData={customerData}
-              handleFetchCep={handleFetchCep}
+              isGuest={isGuest} isLookingUpCep={isLookingUpCep} cepMessage={cepMessage} isSavingAddress={isSavingAddress}
               onNext={handleAddressNext}
               onBack={() => changeStep("customer")}
             />
@@ -132,6 +119,8 @@ export default function CheckoutPage() {
             <ShippingStep
               shippingRates={shippingRates}
               isLoadingShipping={isLoadingShipping}
+              shippingError={shippingError} retryShipping={retryShipping}
+              pickupAllowed={items.every(({ product }) => product.permite_retirada !== false)}
               selectedRate={selectedRate}
               setSelectedRate={setSelectedRate}
               storeConfig={storeConfig}
@@ -235,7 +224,7 @@ export default function CheckoutPage() {
               </Card>
 
               <Button
-                className="w-full h-9 text-xs font-semibold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer"
+                size="lg" className="flow-action"
                 disabled={isSubmitting}
                 onClick={handleFinalizeOrder}
               >
@@ -247,7 +236,7 @@ export default function CheckoutPage() {
                 ) : (
                   <>
                     <MessageCircle className="w-4 h-4" />
-                    Confirmar e Finalizar Pedido
+                    Confirmar e abrir WhatsApp
                   </>
                 )}
               </Button>
@@ -260,7 +249,8 @@ export default function CheckoutPage() {
             items={items}
             shipping={selectedRate}
             total={total}
-            onRemoveItem={() => {}}
+            subtotal={subtotal}
+            disabled={isSubmitting}
           />
         </div>
       </div>

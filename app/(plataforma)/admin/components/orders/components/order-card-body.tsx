@@ -2,6 +2,7 @@
 
 import { CardContent } from "@/components/ui/card";
 import { MessageCircle } from "lucide-react";
+import { whatsAppNumber } from "@/lib/utils";
 import { useState } from "react";
 
 import { OrderCardActions } from "./order-card-actions";
@@ -32,20 +33,10 @@ export function OrderCardBody({
   const orderLink =
     `${origin}/perfil?order=${orderIdShort}`;
 
-  let rawPhone = (
-    order.shipping_phone ||
-    order.phone ||
-    ""
-  ).replace(/\D/g, "");
-
-  if (rawPhone.length === 10 || rawPhone.length === 11) {
-    rawPhone = `55${rawPhone}`;
-  }
-
+  const rawPhone = whatsAppNumber(order.shipping_phone || order.phone);
   const message =
-    `Olá ${clientName}! Aqui é da ${storeName}. ` +
-    `Estou entrando em contato sobre o seu pedido #${orderIdShort}.\n\n` +
-    `Link do seu pedido: ${orderLink}`;
+    `Olá ${clientName}! Aqui é da ${storeName}. Estou entrando em contato sobre o seu pedido #${orderIdShort}.` +
+    (order.user_id ? `\n\nAcompanhe seu pedido: ${orderLink}` : "");
 
   const whatsappUrl =
     rawPhone.length > 0
@@ -53,7 +44,7 @@ export function OrderCardBody({
       : "";
 
   return (
-    <CardContent className="flex-1 p-3 sm:p-4 space-y-3 sm:space-y-4 text-[11px]">
+    <CardContent className="flex-1 space-y-4 p-4 text-sm sm:p-5">
       <OrderShippingInfo
         order={order}
         isPickup={isPickup}

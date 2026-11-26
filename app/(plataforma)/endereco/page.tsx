@@ -93,9 +93,9 @@ export default function AddressPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="mx-auto max-w-6xl space-y-6 pb-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Meus Endereços</h1>
+        <h1 className="page-title">Meus Endereços</h1>
         <p className="text-sm text-muted-foreground">
           Gerencie seus endereços de entrega.
         </p>
@@ -104,7 +104,7 @@ export default function AddressPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* FORM */}
         <div className="lg:col-span-2">
-          <div className="bg-card border p-6 rounded-xl space-y-4 shadow-sm">
+          <div className="bg-card border p-5 sm:p-6 rounded-[var(--panel-radius)] space-y-4">
             <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
               <fieldset disabled={isPending} className="space-y-4">
                 <InputGroup
@@ -250,8 +250,7 @@ export default function AddressPage() {
         isOpen={!!deleteId}
         onClose={() => setDeleteId(null)}
         onConfirm={() => {
-          deleteAddress(deleteId!);
-          setDeleteId(null);
+          deleteAddress(deleteId!, { onSuccess: () => setDeleteId(null) });
         }}
         isPending={isPending}
       />
@@ -259,8 +258,7 @@ export default function AddressPage() {
         isOpen={!!activeId}
         onClose={() => setActiveId(null)}
         onConfirm={() => {
-          activateAddress(activeId!);
-          setActiveId(null);
+          activateAddress(activeId!, { onSuccess: () => setActiveId(null) });
         }}
         isPending={isPending}
       />

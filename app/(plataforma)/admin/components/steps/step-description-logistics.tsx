@@ -31,19 +31,19 @@ export function StepDescriptionLogistics() {
   return (
     <div className="space-y-3 sm:space-y-4 animate-fade-in">
       <div className="space-y-1">
-        <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
+        <Label htmlFor="product-description" className="text-sm font-medium text-brand-ink">
           Descrição detalhada e orientações de personalização
         </Label>
-        <Textarea
+        <Textarea id="product-description"
           placeholder="Descreva os materiais, dimensões da área de estampa, cuidados com o mimo, prazos ou como o cliente deve enviar a arte/foto..."
           {...register("descricao")}
-          className={cn("rounded-lg min-h-[100px] sm:min-h-[120px] text-xs p-2.5", errors.descricao && "border-destructive")}
+          className={cn("min-h-28", errors.descricao && "border-destructive")}
         />
-        {errors.descricao && <span className="text-[10px] text-destructive block">{String(errors.descricao.message)}</span>}
+        {errors.descricao && <span className="text-xs text-destructive block">{String(errors.descricao.message)}</span>}
       </div>
 
       <div className="space-y-2 pt-1">
-        <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold block">
+        <Label className="text-sm font-medium text-brand-ink block">
           Peso e dimensões da embalagem (Cálculo de frete / Melhor Envio)
         </Label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
@@ -55,16 +55,17 @@ export function StepDescriptionLogistics() {
             return (
               <div key={field.name} className="space-y-1">
                 <div className="flex items-center justify-between gap-1">
-                  <Label className="text-[9px] sm:text-[10px] uppercase text-muted-foreground truncate">
+                  <Label htmlFor={field.name} className="text-sm font-medium text-brand-ink">
                     {field.label}
                   </Label>
                   {isWeight && currentWeight > 0 && (
-                    <span className="text-[9px] font-bold text-primary animate-fade-in shrink-0 whitespace-nowrap">
+                    <span className="text-xs font-medium text-primary animate-fade-in shrink-0 whitespace-nowrap">
                       {getWeightFeedback(currentWeight)}
                     </span>
                   )}
                 </div>
                 <Input
+                  id={field.name}
                   type="text"
                   placeholder={isWeight ? "Ex: 0.3" : "0"}
                   value={fieldValue ?? ""}
@@ -72,9 +73,9 @@ export function StepDescriptionLogistics() {
                     const masked = maskDecimal(e.target.value);
                     setValue(field.name, masked, { shouldValidate: true });
                   }}
-                  className={cn("rounded-lg h-9 sm:h-10 text-xs px-2.5", fieldError && "border-destructive")}
+                  className={cn("text-base sm:text-sm px-2.5", fieldError && "border-destructive")}
                 />
-                {fieldError && <span className="text-[9px] text-destructive block truncate">{String(fieldError.message)}</span>}
+                {fieldError && <span className="text-xs text-destructive block">{String(fieldError.message)}</span>}
               </div>
             );
           })}

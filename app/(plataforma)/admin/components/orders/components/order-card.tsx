@@ -18,16 +18,8 @@ export function OrderCard({
     order.shipping_type === "Entrega na cidade" ||
     order.shipping_type === "entrega_propria";
 
-  const shippingStyles = isPickup
-    ? "border-purple-500/50 bg-purple-500/5"
-    : isLocalDelivery
-      ? "border-emerald-500/50 bg-emerald-500/5"
-      : "border-blue-500/30 bg-blue-500/5";
-
   return (
-    <Card
-      className={`flex flex-col overflow-hidden border transition-all hover:shadow-md ${shippingStyles}`}
-    >
+    <Card className="min-w-0 gap-0 py-0">
       <OrderCardHeader
         order={order}
         updateStatus={updateStatus}

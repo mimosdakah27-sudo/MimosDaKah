@@ -55,19 +55,26 @@ export function SiteHeader() {
 
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
   const handleLogout = async () => {
-    const supabase = supabaseBrowser() as any;
-
-    await supabase.auth.signOut();
-
-    queryClient.clear();
-
-    toast.success("Sessão encerrada");
-
-    setShowLogoutDialog(false);
-
-    router.push("/");
-    router.refresh();
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      const { error } = await supabaseBrowser().auth.signOut();
+      if (error) throw error;
+      queryClient.clear();
+      setShowLogoutDialog(false);
+      toast.success("Sessão encerrada");
+      router.push("/");
+      router.refresh();
+    } catch {
+      setLogoutError("Não foi possível sair da conta. Tente novamente.");
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   const loginUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
@@ -80,17 +87,16 @@ export function SiteHeader() {
           <Link href="/" className="flex items-center gap-2 shrink-0">
             <div className="h-9 w-9 rounded-xl bg-primary/10 overflow-hidden flex items-center justify-center relative border border-border/40">
               <Image
-                src="/logo.png"
+                src="/brand-icon.png"
                 alt={config?.name || "Logo"}
                 fill
                 className="object-cover"
                 sizes="36px"
-                priority
               />
             </div>
 
             <span className="font-bold text-sm sm:text-xl tracking-tight block truncate max-w-[120px] sm:max-w-[180px] md:max-w-none">
-              {config?.name || "MimosDaKah"}
+              {config?.name || "Mimos da Kah"}
             </span>
           </Link>
 
@@ -193,7 +199,7 @@ export function SiteHeader() {
 
                     <DropdownMenuContent
                       align="end"
-                      className="w-56"
+                      className="w-56 [&_[role=menuitem]]:min-h-11"
                     >
                       {/* ADMIN */}
                       {isAdmin && (
@@ -322,9 +328,9 @@ export function SiteHeader() {
       ========================= */}
       <Dialog
         open={showLogoutDialog}
-        onOpenChange={setShowLogoutDialog}
+        onOpenChange={(open) => { if (!loggingOut) { setLogoutError(""); setShowLogoutDialog(open); } }}
       >
-        <DialogContent>
+        <DialogContent showCloseButton={!loggingOut}>
           <DialogHeader className="items-center text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-2">
               <LogOut className="h-6 w-6" />
@@ -340,13 +346,13 @@ export function SiteHeader() {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="gap-2">
+          {logoutError && <p role="alert" className="text-sm text-destructive">{logoutError}</p>}
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() =>
-                setShowLogoutDialog(false)
-              }
+              disabled={loggingOut}
+              onClick={() => { setLogoutError(""); setShowLogoutDialog(false); }}
               className="flex-1"
             >
               Cancelar
@@ -355,10 +361,11 @@ export function SiteHeader() {
             <Button
               type="button"
               variant="destructive"
+              disabled={loggingOut}
               onClick={handleLogout}
               className="flex-1"
             >
-              Sim, sair
+              {loggingOut ? "Saindo…" : "Sim, sair"}
             </Button>
           </DialogFooter>
         </DialogContent>

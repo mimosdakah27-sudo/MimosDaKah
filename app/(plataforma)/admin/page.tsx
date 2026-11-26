@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "./components/EmptyState";
@@ -14,7 +14,7 @@ import {
 import { CreateQuoteDialog } from "./components/orders/components/create-quote-dialog";
 
 export default function AdminPage() {
-  const router = useRouter();
+  const pendingUrl = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchParams = useSearchParams();
 
   const {
@@ -22,6 +22,7 @@ export default function AdminPage() {
     setTab,
     statusFilter,
     setStatusFilter,
+    isInitialLoading, loadFailed, retry,
     products,
     orders,
     searchTerm,
@@ -32,123 +33,67 @@ export default function AdminPage() {
     setOrderStatusFilter,
   } = useAdminDashboard();
 
-  /**
-   * Sincroniza a aba e a pesquisa com a URL.
-   */
   useEffect(() => {
-    const hash = window.location.hash.replace("#", "");
-    const rawSearch = searchParams.get("search") ?? "";
-    const cleanSearchFromUrl = rawSearch.replace(/#/g, "").trim();
+    const syncFromUrl = () => {
+      if (pendingUrl.current) clearTimeout(pendingUrl.current);
+      const term = new URLSearchParams(window.location.search).get("search") || "";
+      setSearchTerm(term);
+      setTab(window.location.hash === "#pedidos" || (!window.location.hash && term) ? "pedidos" : "produtos");
+    };
+    syncFromUrl();
+    window.addEventListener("hashchange", syncFromUrl);
+    window.addEventListener("popstate", syncFromUrl);
+    return () => {
+      if (pendingUrl.current) clearTimeout(pendingUrl.current);
+      window.removeEventListener("hashchange", syncFromUrl);
+      window.removeEventListener("popstate", syncFromUrl);
+    };
+  }, [searchParams, setSearchTerm, setTab]);
 
-    if (cleanSearchFromUrl && !hash) {
-      if (tab !== "pedidos") {
-        setTab("pedidos");
-      }
-    } else if (hash === "pedidos" || hash === "produtos") {
-      if (tab !== hash) {
-        setTab(hash as "produtos" | "pedidos");
-      }
-    }
-
-    if (cleanSearchFromUrl !== searchTerm) {
-      setSearchTerm(cleanSearchFromUrl);
-    }
-  }, [
-    searchParams,
-    searchTerm,
-    tab,
-    setSearchTerm,
-    setTab,
-  ]);
-
-  const handleTabChange = (newTab: "produtos" | "pedidos") => {
+  function handleTabChange(newTab: "produtos" | "pedidos") {
     setTab(newTab);
+    const url = new URL(window.location.href);
+    url.hash = newTab;
+    window.history.replaceState(null, "", url);
+  }
 
-    const params = new URLSearchParams(searchParams.toString());
-    const queryString = params.toString();
-
-    router.replace(
-      `/admin${queryString ? `?${queryString}` : ""}#${newTab}`,
-      {
-        scroll: false,
-      },
-    );
-  };
-
-  /**
-   * Atualiza a pesquisa e mantém o estado na URL.
-   */
-  const handleSearchChange = (value: string) => {
-    const cleanValue = value.replace(/#/g, "").trim();
-
-    setSearchTerm(cleanValue);
-
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (cleanValue) {
-      params.set("search", cleanValue);
-    } else {
-      params.delete("search");
-    }
-
-    const currentHash = window.location.hash || `#${tab}`;
-    const queryString = params.toString();
-
-    router.replace(
-      `/admin${queryString ? `?${queryString}` : ""}${currentHash}`,
-      {
-        scroll: false,
-      },
-    );
-  };
+  function handleSearchChange(value: string) {
+    setSearchTerm(value);
+    if (pendingUrl.current) clearTimeout(pendingUrl.current);
+    pendingUrl.current = setTimeout(() => {
+      const url = new URL(window.location.href);
+      if (value.trim()) url.searchParams.set("search", value.trim());
+      else url.searchParams.delete("search");
+      url.hash ||= "pedidos";
+      window.history.replaceState(null, "", url);
+    }, 300);
+  }
 
   return (
-    <div className="space-y-8">
-      {/* CABEÇALHO */}
-      <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border/40 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Administração
-          </h1>
-
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Gerencie o catálogo, pedidos, pagamentos e entregas da loja.
-          </p>
-        </div>
-
-        {/* AÇÕES E ABAS PRINCIPAIS */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <CreateQuoteDialog />
-
-          <div className="flex gap-2 bg-muted/40 p-1 rounded-xl border border-border/50">
-            <Button
-              variant={tab === "produtos" ? "default" : "ghost"}
-              className={`rounded-lg font-semibold text-sm px-4 ${
-                tab === "produtos" ? "text-white" : ""
-              }`}
-              onClick={() => handleTabChange("produtos")}
-            >
-              Produtos
-            </Button>
-
-            <Button
-              variant={tab === "pedidos" ? "default" : "ghost"}
-              className={`rounded-lg font-semibold text-sm px-4 ${
-                tab === "pedidos" ? "text-white" : ""
-              }`}
-              onClick={() => handleTabChange("pedidos")}
-            >
-              Pedidos
-            </Button>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <header className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="page-title">Administração</h1>
+            <p className="text-sm text-brand-muted">Gerencie os produtos e acompanhe os pedidos da loja.</p>
           </div>
+          <CreateQuoteDialog />
         </div>
-      </div>
-
+        <nav aria-label="Seções da administração" className="flex gap-1 border-b">
+          {(["produtos", "pedidos"] as const).map((section) => (
+            <button key={section} type="button" aria-current={tab === section ? "page" : undefined}
+              onClick={() => handleTabChange(section)}
+              className="min-h-11 border-b-2 border-transparent px-4 text-sm font-semibold capitalize text-brand-muted hover:text-brand-action aria-[current=page]:border-brand-action aria-[current=page]:text-brand-action">
+              {section}
+            </button>
+          ))}
+        </nav>
+      </header>
       {/* FILTROS */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border/20 pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         {tab === "produtos" ? (
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-bold uppercase text-muted-foreground mr-2">
+            <span className="text-sm font-medium text-brand-muted">
               Status:
             </span>
 
@@ -164,7 +109,8 @@ export default function AdminPage() {
                     : "outline"
                 }
                 onClick={() => setStatusFilter(type)}
-                className="capitalize h-8 rounded-lg text-xs"
+                aria-pressed={statusFilter === type}
+                className="capitalize aria-pressed:bg-brand-tint aria-pressed:text-brand-action"
               >
                 {type}
               </Button>
@@ -175,17 +121,18 @@ export default function AdminPage() {
             <div className="flex flex-wrap gap-2 w-full">
               {/* PESQUISA */}
               <Input
-                placeholder="Buscar por código do pedido..."
+                aria-label="Buscar por código do pedido" placeholder="Buscar por código do pedido"
                 value={searchTerm}
                 onChange={(event) =>
                   handleSearchChange(event.target.value)
                 }
-                className="w-full sm:max-w-xs rounded-xl h-9 text-sm"
+                className="w-full sm:max-w-xs"
               />
 
               {/* STATUS DO PEDIDO */}
               <select
-                className="h-9 px-3 rounded-xl border border-input bg-background text-xs"
+                aria-label="Filtrar por status do pedido"
+                className="h-11 w-full rounded-xl border border-input bg-card px-3 text-sm sm:w-auto"
                 value={orderStatusFilter}
                 onChange={(event) =>
                   setOrderStatusFilter(event.target.value)
@@ -233,11 +180,7 @@ export default function AdminPage() {
                 onClick={() =>
                   setOrderTab("pendentes")
                 }
-                className={`h-8 rounded-md text-xs ${
-                  orderTab === "pendentes"
-                    ? "text-white"
-                    : ""
-                }`}
+                aria-pressed={orderTab === "pendentes"}
               >
                 Ativos
               </Button>
@@ -252,11 +195,7 @@ export default function AdminPage() {
                 onClick={() =>
                   setOrderTab("arquivados")
                 }
-                className={`h-8 rounded-md text-xs ${
-                  orderTab === "arquivados"
-                    ? "text-white"
-                    : ""
-                }`}
+                aria-pressed={orderTab === "arquivados"}
               >
                 Arquivados
               </Button>
@@ -266,7 +205,16 @@ export default function AdminPage() {
       </div>
 
       {/* CONTEÚDO */}
-      {tab === "produtos" ? (
+      {isInitialLoading ? (
+        <div aria-label="Carregando dados" role="status" className="grid gap-3 md:grid-cols-3">
+          {[1, 2, 3].map((id) => <div key={id} className="h-36 animate-pulse rounded-xl bg-muted" />)}
+        </div>
+      ) : loadFailed ? (
+        <div role="alert" className="space-y-3">
+          <p>Não foi possível carregar os {tab}.</p>
+          <Button variant="outline" onClick={() => void retry()}>Tentar novamente</Button>
+        </div>
+      ) : tab === "produtos" ? (
         <ProductsTab products={products} />
       ) : orders.length > 0 ? (
         <OrdersTab orders={orders} />

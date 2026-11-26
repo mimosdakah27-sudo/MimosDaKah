@@ -98,29 +98,21 @@ export function OrderCardHeader({
     order.payment_status || "pending";
 
   return (
-    <div className="border-b border-border/50 bg-muted/20 p-3 sm:p-4">
+    <div className="border-b bg-brand-surface p-4 sm:p-5">
       {/* CABEÇALHO */}
       <div className="flex justify-between items-start gap-2 mb-3">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap mb-1">
-            <span className="text-xs sm:text-sm font-bold tracking-tight break-all">
+            <span className="text-base font-semibold tracking-tight break-all">
               #{order.id.slice(0, 8)}
             </span>
 
-            <Badge
-              className={`text-[8px] uppercase shrink-0 ${
-                isPickup
-                  ? "bg-purple-600 text-white"
-                  : isLocalDelivery
-                    ? "bg-emerald-600 text-white"
-                    : "bg-blue-600 text-white"
-              }`}
-            >
+            <Badge className="bg-brand-tint text-xs font-medium text-brand-action">
               {shippingLabel}
             </Badge>
           </div>
 
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {new Date(
               order.created_at,
             ).toLocaleDateString("pt-BR")}
@@ -128,7 +120,7 @@ export function OrderCardHeader({
         </div>
 
         <div className="text-right shrink-0">
-          <p className="text-xs sm:text-sm font-bold text-primary">
+          <p className="text-lg font-semibold text-brand-ink">
             {formatBRL(
               Number(order.total || 0),
             )}
@@ -140,7 +132,7 @@ export function OrderCardHeader({
       <div className="space-y-1.5 mb-2.5">
         <label
           htmlFor={`order-status-${order.id}`}
-          className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground"
+          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
         >
           <PackageCheck size={12} />
           Status do pedido
@@ -161,7 +153,7 @@ export function OrderCardHeader({
         >
           <SelectTrigger
             id={`order-status-${order.id}`}
-            className="w-full h-8 text-xs bg-background"
+            className="w-full bg-card"
           >
             <SelectValue>
               {getOrderStatusLabel(
@@ -170,7 +162,7 @@ export function OrderCardHeader({
             </SelectValue>
           </SelectTrigger>
 
-          <SelectContent className="w-[240px]">
+          <SelectContent className="w-[240px] [&_[role=option]]:min-h-11">
             {ORDER_STATUSES.map((status) => {
               /*
                * "Pronto para retirada" só faz sentido
@@ -215,7 +207,7 @@ export function OrderCardHeader({
       <div className="space-y-1.5">
         <label
           htmlFor={`payment-status-${order.id}`}
-          className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground"
+          className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"
         >
           <CreditCard size={12} />
           Status do pagamento
@@ -233,7 +225,7 @@ export function OrderCardHeader({
         >
           <SelectTrigger
             id={`payment-status-${order.id}`}
-            className="w-full h-8 text-xs bg-background"
+            className="w-full bg-card"
           >
             <SelectValue>
               {getPaymentStatusLabel(
@@ -242,7 +234,7 @@ export function OrderCardHeader({
             </SelectValue>
           </SelectTrigger>
 
-          <SelectContent className="w-[220px]">
+          <SelectContent className="w-[220px] [&_[role=option]]:min-h-11">
             {PAYMENT_STATUSES.map((status) => (
               <SelectItem
                 key={status.value}

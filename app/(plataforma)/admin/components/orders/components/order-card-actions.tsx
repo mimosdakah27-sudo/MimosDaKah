@@ -18,7 +18,7 @@ export function OrderCardActions({
       <Button
         size="sm"
         variant="outline"
-        className="h-8 text-[10px] flex-1 sm:flex-none"
+        className="flex-1"
         onClick={() =>
           updateArchive({
             id: order.id,
@@ -39,25 +39,10 @@ export function OrderCardActions({
       </Button>
 
       {order.shipping_phone && whatsappUrl && (
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex-1 sm:flex-none"
-        >
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 text-[10px] w-full"
-          >
-            <MessageCircle
-              size={13}
-              className="mr-1 text-emerald-600"
-            />
-
-            WhatsApp
-          </Button>
-        </a>
+        <Button size="sm" variant="outline" className="flex-1" nativeButton={false}
+          render={<a href={whatsappUrl} target="_blank" rel="noreferrer" />}>
+          <MessageCircle /> WhatsApp
+        </Button>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
-import { Database } from "@/types/database";
+import type { Database } from "@/types/database";
 
-
-
-export type ProductDatabase = (Database["public"]["Tables"]["products"]["Row"])[];
+export type CatalogProduct = Pick<
+  Database["public"]["Tables"]["products"]["Row"],
+  "id" | "nome" | "preco" | "preco_promocional" | "tipo_venda" | "imagem_url" | "ativo"
+>;

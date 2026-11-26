@@ -1,100 +1,54 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
-import { AuthContext } from "@/contexts/auth-context";
+import type { Session } from "@supabase/supabase-js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Session } from "@supabase/supabase-js";
+import { AuthContext } from "@/contexts/auth-context";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [session, setSession] = useState<Session | null>(null);
-  const [isSessionLoading, setIsSessionLoading] = useState(true);
-  const supabase = supabaseBrowser() as any;
-
-  // 1. Busca o perfil completo
-  const fetchProfile = async () => {
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    if (!currentSession?.user) return null;
-
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", currentSession.user.id)
-      .maybeSingle();
-      
-    return data;
-  };
-
-  // 2. Busca status de Admin na tabela user_roles (Logica original que funcionava)
-  const fetchAdminStatus = async (): Promise<boolean> => {
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    if (!currentSession?.user) return false;
-
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", currentSession.user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-      
-    return !!data;
-  };
-
-  // Queries separadas para manter performance
-  const { data: profile, isLoading: isProfileLoading } = useQuery({
-    queryKey: ["userProfile", session?.user?.id],
-    queryFn: fetchProfile,
-    enabled: !!session,
-  });
-
-  const { data: isAdmin, isLoading: isAdminLoading } = useQuery({
-    queryKey: ["isAdminUser", session?.user?.id],
-    queryFn: fetchAdminStatus,
-    enabled: !!session,
-  });
+  const [initializing, setInitializing] = useState(true);
+  const supabase = supabaseBrowser();
+  const userId = session?.user.id;
 
   useEffect(() => {
-    const loadSession = async () => {
-      try {
-        const { data: { session: localSession } } = await supabase.auth.getSession();
-        setSession(localSession);
-      } catch (error) {
-        console.error("Erro ao carregar sessão:", error);
-      } finally {
-        setIsSessionLoading(false);
+    // INITIAL_SESSION também é emitido quando o visitante está sem sessão.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, current) => {
+      setSession(current);
+      setInitializing(false);
+      if (event === "USER_UPDATED" && current) {
+        void queryClient.invalidateQueries({ queryKey: ["userProfile", current.user.id] });
       }
-    };
-
-    loadSession();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event: any, newSession: any) => {
-      setSession(newSession);
-      setIsSessionLoading(false);
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      queryClient.invalidateQueries({ queryKey: ["isAdminUser"] });
     });
+    return () => subscription.unsubscribe();
+  }, [supabase, queryClient]);
 
-    return () => listener.subscription.unsubscribe();
-  }, [queryClient]);
-
-  // Global loading considera o estado da sessão E das duas queries
-  const globalLoading = isSessionLoading || (!!session && (isProfileLoading || isAdminLoading));
+  const profile = useQuery({
+    queryKey: ["userProfile", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("*").eq("user_id", userId!).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+  const role = useQuery({
+    queryKey: ["isAdminUser", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId!).eq("role", "admin").maybeSingle();
+      if (error) throw error;
+      return Boolean(data);
+    },
+  });
 
   return (
-    <AuthContext.Provider
-      value={{
-        user: session?.user ?? null,
-        session,
-        profile,
-        isAdmin: !!isAdmin,
-        loading: globalLoading,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user: session?.user ?? null, session, profile: profile.data ?? null, isAdmin: role.data === true,
+      loading: initializing || (!!userId && (profile.isLoading || role.isLoading)),
+    }}>
       {children}
     </AuthContext.Provider>
   );

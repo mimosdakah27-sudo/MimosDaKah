@@ -32,6 +32,7 @@ import {
 
 import { formatBRL } from "@/lib/utils";
 
+import { isQuoteOrder } from "../types/profile-type";
 import { OrderProductItem } from "./OrderProductItem";
 
 interface StoreConfig {
@@ -47,7 +48,8 @@ interface OrderCardProps {
   order: any;
   storeConfig?: StoreConfig | null;
   onWhatsAppSupport: (order: any) => void;
-  onRejectOrder?: (orderId: string) => void;
+  onRejectOrder?: (orderId: string, options: { onSuccess: () => void }) => void;
+  rejecting?: boolean;
 }
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -101,26 +103,12 @@ export function OrderCard({
   order,
   storeConfig,
   onWhatsAppSupport,
-  onRejectOrder,
+  onRejectOrder, rejecting = false,
 }: OrderCardProps) {
   const [showRejectModal, setShowRejectModal] =
     useState(false);
 
-  /**
-   * ORÇAMENTO
-   *
-   * O pedido inteiro é considerado orçamento quando
-   * pelo menos um dos produtos possui tipo_venda = "orcamento".
-   *
-   * O profile-service deve anexar tipo_venda diretamente
-   * em cada order_item.
-   */
-  const isQuote =
-    Array.isArray(order.order_items) &&
-    order.order_items.some(
-      (item: any) =>
-        normalize(item.tipo_venda) === "orcamento",
-    );
+  const isQuote = isQuoteOrder(order);
 
   /**
    * Modalidade.
@@ -262,8 +250,7 @@ export function OrderCard({
   };
 
   const handleConfirmReject = () => {
-    setShowRejectModal(false);
-    onRejectOrder?.(order.id);
+    onRejectOrder?.(order.id, { onSuccess: () => setShowRejectModal(false) });
   };
 
   const subtotal =
@@ -289,7 +276,7 @@ export function OrderCard({
                 <Badge
                   className={
                     isQuote
-                      ? "bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-0.5"
+                      ? "bg-brand-tint hover:bg-brand-tint text-brand-action font-semibold text-xs px-2 py-0.5"
                       : "text-[10px] uppercase tracking-wider font-bold"
                   }
                 >
@@ -321,11 +308,11 @@ export function OrderCard({
           ================================================== */}
 
           {isQuote && (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
-              <HelpCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-3.5 rounded-xl bg-brand-surface border border-border flex items-start gap-3">
+              <HelpCircle className="h-5 w-5 text-brand-action shrink-0 mt-0.5" />
 
               <div className="space-y-0.5 text-xs">
-                <p className="font-bold text-amber-700 dark:text-amber-400">
+                <p className="font-bold text-brand-action">
                   Este pedido é um orçamento
                 </p>
 
@@ -460,7 +447,7 @@ export function OrderCard({
                     onClick={() =>
                       onWhatsAppSupport(order)
                     }
-                    className="w-full text-blue-700 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-950/40 font-semibold text-xs h-9"
+                    className="w-full text-brand-action hover:bg-brand-tint font-semibold text-xs h-9"
                   >
                     <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
 
@@ -550,7 +537,7 @@ export function OrderCard({
                     onClick={() =>
                       setShowRejectModal(true)
                     }
-                    className="w-full text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/50 dark:hover:bg-red-950/40 text-xs font-semibold h-9 gap-1.5"
+                    className="w-full text-destructive border-destructive/35 hover:bg-destructive/10 hover:text-destructive text-xs font-semibold h-9 gap-1.5"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Recusar Orçamento
@@ -568,7 +555,7 @@ export function OrderCard({
 
       <AlertDialog
         open={showRejectModal}
-        onOpenChange={setShowRejectModal}
+        onOpenChange={(open) => { if (!rejecting) setShowRejectModal(open); }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -584,15 +571,16 @@ export function OrderCard({
           </AlertDialogHeader>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>
+            <AlertDialogCancel disabled={rejecting}>
               Cancelar
             </AlertDialogCancel>
 
             <AlertDialogAction
+              disabled={rejecting}
               onClick={handleConfirmReject}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold"
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
             >
-              Sim, recusar
+              {rejecting ? "Recusando…" : "Sim, recusar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,0 +1,139 @@
+.storefront {
+  width: 100%;
+  max-width: 77.5rem;
+  margin-inline: auto;
+  color: var(--brand-ink);
+}
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  background: var(--brand-tint);
+}
+
+.intro {
+  z-index: 1;
+  align-self: center;
+  padding: 1.9rem 1.45rem .4rem;
+}
+
+.title,
+.sectionTitle {
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-wrap: balance;
+  letter-spacing: -.05em;
+}
+
+.title {
+  max-width: 12.5em;
+  font-size: clamp(2.5rem, 7.7vw, 3.4rem);
+  line-height: .99;
+}
+
+.description {
+  max-width: 25rem;
+  margin-top: 1rem;
+  color: var(--brand-muted);
+  font-size: .985rem;
+  line-height: 1.5;
+}
+
+.catalogLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: var(--action-height);
+  margin-top: 1.35rem;
+  padding: .6rem 1.2rem;
+  border-radius: var(--control-radius);
+  background: var(--brand-action);
+  color: var(--brand-action-foreground);
+  font-size: .95rem;
+  font-weight: 600;
+}
+
+.catalogLink:hover { background: var(--brand-action-hover); }
+.storefront a:focus-visible { outline: 3px solid var(--brand-action); outline-offset: 3px; }
+
+.photoField {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 1.8rem 1.5rem;
+}
+
+.photoField::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 15% -25% -65% 10%;
+  transform: rotate(-13deg);
+  border-radius: 50% 50% 0 0;
+  background: repeating-linear-gradient(90deg, color-mix(in oklch, var(--brand-tint) 81%, var(--primary)) 0 1.7rem, color-mix(in oklch, var(--brand-tint) 90%, var(--primary)) 1.7rem 3.4rem);
+}
+
+.photoCard {
+  position: relative;
+  width: min(64%, 16rem);
+  min-width: 10rem;
+  padding: .5rem .5rem 0;
+  transform: rotate(3deg);
+  border-radius: .2rem;
+  background: var(--card);
+  box-shadow: 0 .35rem .8rem color-mix(in oklch, var(--chart-5) 14%, transparent), 0 1.1rem 2rem color-mix(in oklch, var(--chart-5) 10%, transparent);
+}
+
+.photoCard::after {
+  content: "";
+  position: absolute;
+  top: -.48rem;
+  left: 50%;
+  width: 3.5rem;
+  height: 1.05rem;
+  transform: translateX(-50%) rotate(-8deg);
+  background: color-mix(in oklch, var(--secondary) 64%, var(--primary));
+  clip-path: polygon(0 0, 100% 0, 96% 25%, 100% 40%, 96% 64%, 100% 100%, 0 100%, 4% 70%, 0 52%, 4% 23%);
+}
+
+.heroImage { position: relative; aspect-ratio: 1.16; overflow: hidden; background: var(--muted); }
+.caption { display: flex; align-items: center; justify-content: space-between; gap: .4rem; min-height: 2.35rem; padding-inline: .15rem; font-size: .83rem; font-weight: 600; }
+.caption span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.caption svg { flex-shrink: 0; }
+.photoCard:hover .caption span { text-decoration: underline; text-underline-offset: .18rem; }
+.brandArt { position: relative; width: min(75%, 24rem); aspect-ratio: 1.5; }
+
+.section { margin-top: clamp(2.5rem, 5vw, 4.5rem); scroll-margin-top: 6.25rem; }
+.sectionTitle { font-size: clamp(2rem, 3.3vw, 2.95rem); line-height: 1.1; }
+.sectionHead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .4rem 1rem; margin-bottom: 1.1rem; }
+.count { color: var(--brand-muted); font-size: .925rem; }
+.section:last-child { padding-bottom: 2.25rem; }
+
+@media (min-width: 48rem) {
+  .hero { grid-template-columns: 1.08fr 1fr; border-radius: 1.65rem; }
+  .intro { padding: clamp(2.2rem, 4.5vw, 4.5rem); padding-right: 0; }
+  .title { font-size: clamp(3.2rem, 5.2vw, 4.9rem); max-width: 9.3em; }
+  .description { margin-top: 1.25rem; font-size: 1.075rem; }
+  .catalogLink { margin-top: 1.8rem; }
+  .photoField { padding: clamp(2rem, 4vw, 3.4rem); }
+  .photoField::before { inset: -44% -56% -35% 5%; transform: rotate(-16deg); }
+  .photoCard { width: min(84%, 23.5rem); padding: .75rem .75rem 0; }
+  .heroImage { aspect-ratio: 1.12; }
+  .caption { min-height: 3.15rem; font-size: 1rem; }
+  .photoCard::after { width: 4.8rem; height: 1.35rem; top: -.65rem; }
+  .sectionHead { margin-bottom: 1.55rem; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .catalogLink { transition: background-color .16s; }
+}
+
+@media (forced-colors: active) {
+  .catalogLink, .photoCard { border: 1px solid ButtonText; }
+  .photoField::before, .photoCard::after { display: none; }
+}

@@ -18,8 +18,20 @@ export type CheckoutAddressDraft = {
   state: string;
 };
 
+export type CheckoutShippingChoice = {
+  key: string;
+  rate: {
+    id: string;
+    price: number;
+    delivery_time?: number;
+    type: "pickup" | "local" | "other_city";
+  };
+};
+
 export type CheckoutDraft = {
   version: 1;
+  requestId?: string;
+  shippingChoice?: CheckoutShippingChoice | null;
 
   step: "customer" | "address" | "shipping" | "review";
 
@@ -77,21 +89,30 @@ export function createEmptyAddressDraft(): CheckoutAddressDraft {
 export function createCheckoutDraft(
   data?: Partial<CheckoutDraft>,
 ): CheckoutDraft {
+  const customerData = createEmptyCustomerDraft();
+  for (const key of Object.keys(customerData) as (keyof CheckoutCustomerDraft)[]) {
+    const value = data?.customerData?.[key];
+    if (typeof value === "string") customerData[key] = value;
+  }
+  const addressData = createEmptyAddressDraft();
+  for (const key of Object.keys(addressData) as (keyof CheckoutAddressDraft)[]) {
+    if (key === "without_number") continue;
+    const value = data?.addressData?.[key];
+    if (typeof value === "string") addressData[key] = value;
+  }
+  addressData.without_number = data?.addressData?.without_number === true;
+  const choice = data?.shippingChoice;
+  const rate = choice?.rate;
+  const hasChoice = choice && typeof choice.key === "string" && rate &&
+    typeof rate.id === "string" && ["pickup", "local", "other_city"].includes(rate.type) &&
+    Number.isFinite(rate.price) && rate.price >= 0;
   return {
     version: CURRENT_VERSION,
-
+    shippingChoice: hasChoice ? choice : null,
+    requestId: typeof data?.requestId === "string" && /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(data.requestId) ? data.requestId : undefined,
     step: data?.step || "customer",
-
-    customerData: {
-      ...createEmptyCustomerDraft(),
-      ...(data?.customerData || {}),
-    },
-
-    addressData: {
-      ...createEmptyAddressDraft(),
-      ...(data?.addressData || {}),
-    },
-
+    customerData,
+    addressData,
     saveAddressAfterLogin:
       Boolean(data?.saveAddressAfterLogin),
   };

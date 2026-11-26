@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { getAdminDashboardData } from "../services/admin-service";
@@ -12,7 +11,6 @@ export type OrderTabType = "pendentes" | "arquivados";
 
 export function useAdminDashboard() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { user, isAdmin, loading: authLoading } = useAuth();
 
   const [tab, setTab] = useState<"produtos" | "pedidos">("produtos");
@@ -26,22 +24,13 @@ export function useAdminDashboard() {
   const [orderStatusFilter, setOrderStatusFilter] =
     useState<string>("todos");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-data"],
-    queryFn: getAdminDashboardData,
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-data", user?.id, tab],
+    queryFn: () => getAdminDashboardData(tab),
     enabled: !!user && isAdmin,
-    refetchInterval: 10000,
-    staleTime: 0,
+    refetchInterval: tab === "pedidos" ? 10000 : false,
+    staleTime: 10000,
   });
-
-  // URL -> estado da pesquisa
-  useEffect(() => {
-    const searchFromUrl = searchParams.get("search") ?? "";
-
-    if (searchFromUrl !== searchTerm) {
-      setSearchTerm(searchFromUrl);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -136,6 +125,8 @@ export function useAdminDashboard() {
     products: filteredProducts,
     orders: filteredOrders,
     isInitialLoading: authLoading || isLoading,
+    loadFailed: isError && !data,
+    retry: refetch,
     isAdmin,
   };
 }

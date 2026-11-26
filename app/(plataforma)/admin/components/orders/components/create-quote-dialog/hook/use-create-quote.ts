@@ -22,7 +22,7 @@ export function useCreateQuote(onCreated?: () => void) {
   const [observation, setObservation] = useState("");
 
   // Busca de opções (clientes e produtos)
-  const { data, isLoading: isLoadingOptions } = useQuery({
+  const { data, isLoading: isLoadingOptions, isError: optionsFailed, refetch: retryOptions } = useQuery({
     queryKey: ["quote-options"],
     queryFn: fetchQuoteOptions,
     enabled: open,
@@ -98,7 +98,7 @@ export function useCreateQuote(onCreated?: () => void) {
     setOpen,
     customers: data?.customers ?? [],
     products: data?.products ?? [],
-    isLoadingOptions,
+    isLoadingOptions, optionsFailed, retryOptions,
     isSubmitting: createMutation.isPending,
     openCustomerCombo,
     setOpenCustomerCombo,

@@ -1,161 +1,111 @@
-"use client";
-
-import { HelpCircle, Loader2, MessageCircle } from "lucide-react";
-import Image from "next/image";
+import { ArrowUpRight, MessageCircle } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import type { ReactNode } from "react";
 
+import { CatalogImage } from "./catalog-image";
+import type { CatalogProduct } from "@/app/(plataforma)/home/types/product-type";
 import { cn, formatBRL } from "@/lib/utils";
-import type { Database } from "@/types/database";
-
-type ProductRowExtended = Database["public"]["Tables"]["products"]["Row"] & {
-  ativo?: boolean;
-  destaque?: boolean;
-  preco_promocional?: number | null;
-  permite_retirada?: boolean;
-  tipo_venda?: "normal" | "orcamento" | "whatsapp_finalizacao" | null;
-};
 
 interface ProductCardProps {
-  product: ProductRowExtended;
+  product: CatalogProduct;
   isAdmin?: boolean;
-  actions?: React.ReactNode;
-  index?: number;
+  actions?: ReactNode;
+  compact?: boolean;
 }
 
-export function ProductCard({
-  product,
-  isAdmin = false,
-  actions,
-}: ProductCardProps) {
-  const [isNavigating, setIsNavigating] = useState(false);
-
-  const isAtivo = product.ativo !== false;
-  const tipoVenda = product.tipo_venda || "normal";
-
-  const isOrcamento = tipoVenda === "orcamento";
-  const isWhatsappFinalizacao = tipoVenda === "whatsapp_finalizacao";
-
-  // Preços
-  const precoRegular = product.preco || 0;
-  const precoPromo = product.preco_promocional;
-
-  const temPromocao =
-    !isOrcamento &&
-    precoPromo &&
-    precoPromo > 0 &&
-    precoPromo < precoRegular;
-
-  const precoAtual = temPromocao ? precoPromo : precoRegular;
-
-  // Desconto
-  let descontoPercentual = 0;
-
-  if (temPromocao) {
-    descontoPercentual = Math.round(
-      ((precoRegular - precoPromo) / precoRegular) * 100,
-    );
-  }
-
-  // Texto de atendimento
-  const textoRodape = isOrcamento
+export function ProductCard({ product, isAdmin = false, actions, compact = false }: ProductCardProps) {
+  const isQuote = product.tipo_venda === "orcamento";
+  const offer = product.preco_promocional;
+  const hasOffer = !isQuote && offer !== null && offer > 0 && offer < product.preco;
+  const price = hasOffer ? offer : product.preco;
+  const discount = hasOffer ? Math.round((1 - price / product.preco) * 100) : 0;
+  const canOpen = !isAdmin || product.ativo !== false;
+  const orderLabel = isQuote
     ? "Solicite seu orçamento pelo WhatsApp"
-    : isWhatsappFinalizacao
+    : product.tipo_venda === "whatsapp_finalizacao"
       ? "Finalize seu pedido pelo WhatsApp"
       : "Peça pelo site ou WhatsApp";
 
   return (
-    <div
-      className={cn(
-        "group flex flex-col rounded-md md:rounded-xl overflow-hidden bg-card border border-border/60 shadow-xs transition-all hover:shadow-md hover:border-border relative h-full justify-between cursor-pointer",
-        isAdmin && !isAtivo && "opacity-75 grayscale",
-      )}
-    >
-      {/* Overlay de carregamento */}
-      {isNavigating && (
-        <div className="absolute inset-0 bg-background/50 backdrop-blur-[1px] z-40 flex items-center justify-center transition-all">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </div>
-      )}
-
-      {/* Link que cobre todo o card */}
-      {(isAtivo || !isAdmin) && (
-        <Link
-          href={`/produto/${product.id}`}
-          prefetch={true}
-          onClick={() => setIsNavigating(true)}
-          className="absolute inset-0 z-10"
-          aria-label={`Ver detalhes do produto: ${product.nome}`}
+    <article className={cn(
+      "group relative flex h-full min-w-0",
+      isAdmin ? "flex-col overflow-hidden rounded-[var(--panel-radius)] border bg-card" :
+        compact ? "items-center gap-3.5 rounded-2xl border border-border p-2.5" : "flex-col",
+    )}>
+      <div className={cn(
+        "relative isolate overflow-hidden",
+        isAdmin ? "aspect-[4/3] w-full bg-brand-surface" :
+          compact ? "size-20 shrink-0 rounded-lg bg-muted sm:size-24" :
+            "aspect-square rounded-xl bg-muted sm:rounded-2xl",
+      )}>
+        <CatalogImage
+          src={product.imagem_url}
+          compact={compact}
+          alt=""
+          sizes={compact ? "(min-width: 640px) 96px, 80px" : "(min-width: 1280px) 295px, (min-width: 1024px) 24vw, (min-width: 640px) 32vw, 48vw"}
+          className="object-cover"
         />
-      )}
-
-      {/* Imagem */}
-      <div className="relative aspect-square w-full overflow-hidden bg-muted/20">
-        <Image
-          src={product.imagem_url || "/placeholder.png"}
-          alt={product.nome}
-          fill
-          sizes="(max-width: 640px) 50vw, 25vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
-        />
+        {isAdmin && <span className="absolute left-3 top-3 rounded-full border bg-card px-2.5 py-1 text-xs font-medium text-brand-ink">
+          {canOpen ? "Na vitrine" : "Oculto"}
+        </span>}
+        {!isAdmin && !compact && discount > 0 && (
+          <span className="absolute left-2.5 top-2.5 rounded-full bg-brand-surface px-2.5 py-1 text-xs font-semibold text-brand-action">
+            −{discount}%
+          </span>
+        )}
       </div>
 
-      {/* Conteúdo */}
-      <div className="p-2.5 flex flex-col flex-grow gap-1.5 justify-between pointer-events-none">
-        {/* Nome */}
-        <div className="space-y-0.5">
-          <h3 className="text-xs font-medium text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-            {product.nome}
-          </h3>
-        </div>
+      <div className={cn(
+        "flex min-w-0 flex-col",
+        isAdmin ? "flex-1 gap-2 p-4" : compact ? "flex-1 gap-1 pr-5" : "flex-1 gap-1.5 pt-3 sm:pt-4",
+      )}>
+        <h3 className={cn(
+          "leading-snug",
+          isAdmin ? "text-base font-semibold text-brand-ink" : "text-[0.98rem] font-medium text-brand-ink sm:text-lg",
+        )}>
+          {canOpen ? (
+            <Link
+              href={`/produto/${product.id}`}
+              prefetch={false}
+              className="line-clamp-2 break-words after:absolute after:inset-0 after:z-10 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-brand-action group-hover:underline group-hover:decoration-1 group-hover:underline-offset-4"
+            >
+              {product.nome}
+            </Link>
+          ) : <span className="line-clamp-2">{product.nome}</span>}
+        </h3>
 
-        {/* Preço */}
-        <div className="space-y-0.5 pt-0.5">
-          {isOrcamento ? (
-            <div className="py-1">
-              <span className="text-xs font-bold text-primary block">
-                Consulte valores via WhatsApp
-              </span>
-            </div>
+        <div className={cn("flex flex-wrap items-baseline gap-x-2 gap-y-0.5", isAdmin ? "" : "text-brand-ink")}>
+          {isQuote ? (
+            <span className={cn("font-semibold", isAdmin ? "text-xs text-primary" : "text-sm")}>
+              {isAdmin ? "Consulte valores via WhatsApp" : "Sob orçamento"}
+            </span>
           ) : (
             <>
-              {temPromocao && (
-                <span className="text-[10px] text-muted-foreground line-through block">
-                  {formatBRL(precoRegular)}
+              <span className={cn("font-semibold", isAdmin ? "text-sm md:text-base" : compact ? "text-sm" : "text-base sm:text-lg")}>
+                {formatBRL(price)}
+              </span>
+              {hasOffer && (
+                <span className={cn("text-xs line-through", isAdmin ? "text-muted-foreground" : "text-brand-muted")}>
+                  <span className="sr-only">Preço anterior </span>{formatBRL(product.preco)}
                 </span>
               )}
-
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-extrabold text-foreground text-sm md:text-base tracking-tight">
-                  {formatBRL(precoAtual)}
-                </span>
-
-                {descontoPercentual > 0 && (
-                  <span className="text-[9px] font-black text-emerald-950 bg-emerald-400 px-1.5 py-0.5 rounded-xs">
-                    {descontoPercentual}% OFF
-                  </span>
-                )}
-              </div>
+              {isAdmin && discount > 0 && (
+                <span className="rounded-md bg-brand-tint px-2 py-0.5 text-xs font-semibold text-brand-action">{discount}% OFF</span>
+              )}
             </>
           )}
         </div>
 
-        {/* Informações do pedido */}
-        <div className="pt-2 border-t border-border/40 mt-auto">
-          <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1.5">
-            <MessageCircle className="h-3 w-3 text-emerald-600 shrink-0" />
-
-            {textoRodape}
-          </span>
-        </div>
-
-        {/* Ações do admin */}
-        {isAdmin && actions && (
-          <div className="mt-2 pt-2 border-t border-border flex gap-1 relative z-30 pointer-events-auto">
-            {actions}
-          </div>
+        {compact && !isAdmin && <ArrowUpRight className="absolute right-3 size-4 text-brand-muted" aria-hidden="true" />}
+        {isAdmin && (
+          <>
+            <p className="mt-auto flex items-center gap-1.5 border-t border-border/40 pt-2 text-xs text-brand-muted">
+              <MessageCircle className="size-3 shrink-0 text-brand-action" aria-hidden="true" />{orderLabel}
+            </p>
+            {actions && <div className="relative z-20 mt-2 flex gap-1 border-t pt-2">{actions}</div>}
+          </>
         )}
       </div>
-    </div>
+    </article>
   );
 }

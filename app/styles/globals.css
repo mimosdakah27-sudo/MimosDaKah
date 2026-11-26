@@ -28,6 +28,16 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-muted: var(--brand-muted);
+  --color-brand-action: var(--brand-action);
+  --color-brand-action-hover: var(--brand-action-hover);
+  --color-brand-action-foreground: var(--brand-action-foreground);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-tint: var(--brand-tint);
+  --color-brand-control: var(--brand-control);
+  --color-success: var(--success);
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -38,13 +48,14 @@
 
   --font-sans: var(--font-sans);
   --font-heading: var(--font-heading);
+  --font-serif: var(--font-display);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-sidebar-accent-foreground);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
@@ -59,12 +70,12 @@
    ROOT: Variáveis CSS (Modo Light com Alto Contraste para Inputs e Bordas)
 ===================================================== */
 :root {
+  --success: oklch(.42 .10 158);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.656 0.261 354.308);
-  --primary-foreground: oklch(0.971 0.014 343.198);
+  --brand-pigment: oklch(0.656 0.261 354.308);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.97 0 0);
@@ -74,10 +85,7 @@
   --destructive: oklch(62.826% 0.25721 28.495);
   --destructive-foreground: oklch(0.98 0 0);
 
-  /* Inputs e bordas escurecidos para excelente contraste de acessibilidade */
   --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
   --radius: 0.45rem;
 
   --chart-1: oklch(0.723 0.22 346.018);
@@ -102,14 +110,14 @@
    DARK MODE: Sobrescrita de Variáveis
 ===================================================== */
 .dark {
+  --success: oklch(.82 .12 158);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.656 0.241 354.308);
-  --primary-foreground: oklch(0.971 0.014 343.198);
+  --brand-pigment: oklch(0.656 0.241 354.308);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -119,8 +127,6 @@
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.98 0 0);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
 
   --chart-1: oklch(0.823 0.12 346.018);
   --chart-2: oklch(0.656 0.241 354.308);
@@ -136,6 +142,36 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Paleta e medidas compartilhadas pela vitrine, pela conta e pela administração. */
+:root, .dark {
+  --primary: var(--brand-action);
+  --primary-foreground: var(--brand-action-foreground);
+  --ring: var(--brand-action);
+  --input: var(--brand-control);
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --control-height: 2.75rem;
+  --action-height: 3rem;
+  --control-radius: .75rem;
+  --panel-radius: 1rem;
+  --flow-width: 20rem;
+  --brand-ink: color-mix(in oklch, var(--foreground) 86%, var(--brand-pigment));
+  --brand-muted: color-mix(in oklch, var(--muted-foreground) 72%, var(--foreground));
+  --brand-action: color-mix(in oklch, var(--brand-pigment) 68%, var(--foreground));
+  --brand-action-hover: color-mix(in oklch, var(--brand-action) 85%, var(--foreground));
+  --brand-action-foreground: var(--background);
+  --brand-surface: color-mix(in oklch, var(--card) 95%, var(--brand-pigment));
+  --brand-tint: color-mix(in oklch, var(--background) 88%, var(--brand-pigment));
+  --brand-control: color-mix(in oklch, var(--foreground) 55%, var(--card));
+}
+
+@media (prefers-contrast: more) {
+  :root, .dark {
+    --brand-ink: var(--foreground);
+    --brand-muted: var(--foreground);
+    --brand-control: var(--foreground);
+  }
 }
 
 /* =====================================================
@@ -163,5 +199,40 @@
 @layer utilities {
   .transition-smooth {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@utility page-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.5vw, 2.75rem);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -.035em;
+  color: var(--brand-ink);
+}
+
+@utility flow-action {
+  display: flex;
+  width: min(100%, var(--flow-width), calc(100vw - 5.5rem));
+  min-height: var(--action-height);
+  margin-inline: auto;
+}
+
+
+/* As ações crescem com o texto sem encolher quando o rodapé muda de coluna. */
+@utility modal-actions {
+  display: grid;
+  gap: .625rem;
+  & > button, & > a {
+    width: 100%;
+    height: auto;
+    min-height: var(--action-height);
+    padding-block: .625rem;
+    white-space: normal;
+    line-height: 1.3;
+  }
+  @media (min-width: 40rem) {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
   }
 }

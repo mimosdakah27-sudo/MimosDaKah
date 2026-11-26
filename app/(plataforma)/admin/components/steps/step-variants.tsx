@@ -204,7 +204,7 @@ export function StepVariants() {
           <span className="text-xs font-bold leading-tight">
             Produto Simples
           </span>
-          <span className="text-[10px] text-muted-foreground font-normal text-center">
+          <span className="text-xs text-muted-foreground font-normal text-center">
             Múltiplas fotos, sem variações
           </span>
         </button>
@@ -221,7 +221,7 @@ export function StepVariants() {
         >
           <Layers className="h-5 w-5 mb-0.5" />
           <span className="text-xs font-bold leading-tight">Com Variações</span>
-          <span className="text-[10px] text-muted-foreground font-normal text-center">
+          <span className="text-xs text-muted-foreground font-normal text-center">
             Cores, tamanhos ou materiais
           </span>
         </button>
@@ -230,7 +230,7 @@ export function StepVariants() {
       {mode === "single" ? (
         <div className="p-4 rounded-xl border border-border bg-card/50 space-y-3">
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase text-muted-foreground font-semibold block">
+            <Label className="text-sm font-medium text-brand-ink block">
               Fotos do Produto (A 1ª foto será a capa)
             </Label>
             <div className="flex flex-wrap gap-2">
@@ -249,7 +249,7 @@ export function StepVariants() {
                       className="h-full w-full object-cover"
                     />
                     {imgIdx === 0 && (
-                      <span className="absolute bottom-0.5 left-0.5 bg-primary text-primary-foreground text-[8px] font-bold px-1 py-0.2 rounded shadow-xs">
+                      <span className="absolute bottom-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] font-semibold px-1 py-0.5 rounded shadow-xs">
                         CAPA
                       </span>
                     )}
@@ -267,7 +267,7 @@ export function StepVariants() {
                       <button
                         type="button"
                         onClick={() => handleSetImageAsCover(0, displayUrl, imgIdx)}
-                        className="bg-amber-500 text-white p-1 rounded-full shadow-md hover:scale-105 transition-transform"
+                        className="bg-primary text-primary-foreground p-1 rounded-full shadow-md hover:scale-105 transition-transform"
                         title="Definir como capa"
                       >
                         <Star className="h-3 w-3 fill-current" />
@@ -279,7 +279,7 @@ export function StepVariants() {
 
               <label className="h-20 w-20 rounded-lg border border-dashed border-border hover:border-primary flex flex-col items-center justify-center cursor-pointer text-muted-foreground hover:text-primary transition-colors bg-secondary/30">
                 <Upload className="h-5 w-5 mb-1" />
-                <span className="text-[10px] font-medium">Add Foto</span>
+                <span className="text-[10px] font-medium">Adicionar foto</span>
                 <input
                   type="file"
                   multiple
@@ -291,7 +291,7 @@ export function StepVariants() {
             </div>
             {((errors?.variants as any)?.[0]?.imagens || errors?.variants) &&
               (!variants[0]?.imagens || variants[0].imagens.length === 0) && (
-                <span className="text-[10px] text-destructive block mt-1">
+                <span className="text-xs text-destructive block mt-1">
                   Adicione ao menos 1 foto principal do produto
                 </span>
               )}
@@ -317,31 +317,31 @@ export function StepVariants() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1">
                     <div className="space-y-1">
-                      <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
+                      <Label className="text-sm font-medium text-brand-ink">
                         Nome da Variação
                       </Label>
                       <Input
                         placeholder="Ex: Azul ou Tamanho G"
                         {...register(`variants.${index}.name`)}
                         className={cn(
-                          "rounded-lg h-9 sm:h-10 text-xs px-2.5",
+                          "text-base sm:text-sm px-2.5",
                           variantErr?.name && "border-destructive",
                         )}
                       />
                       {variantErr?.name && (
-                        <span className="text-[10px] text-destructive block">
+                        <span className="text-xs text-destructive block">
                           {variantErr.name.message}
                         </span>
                       )}
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold">
+                      <Label className="text-sm font-medium text-brand-ink">
                         Material (Opcional)
                       </Label>
                       <Input
                         placeholder="Ex: Cotton / Leather"
                         {...register(`variants.${index}.material`)}
-                        className="rounded-lg h-9 sm:h-10 text-xs px-2.5"
+                        className="text-base sm:text-sm px-2.5"
                       />
                     </div>
                   </div>
@@ -377,7 +377,7 @@ export function StepVariants() {
                 </div>
 
                 <div className="space-y-1.5 pt-1.5 border-t border-border/40">
-                  <Label className="text-[10px] sm:text-xs uppercase text-muted-foreground font-semibold block">
+                  <Label className="text-sm font-medium text-brand-ink block">
                     Fotos desta variação
                   </Label>
                   <div className="flex flex-wrap gap-2">
@@ -397,7 +397,7 @@ export function StepVariants() {
                               className="h-full w-full object-cover"
                             />
                             {imgIdx === 0 && isCurrentPrincipal && (
-                              <span className="absolute bottom-0.5 left-0.5 bg-primary text-primary-foreground text-[8px] font-bold px-1 py-0.2 rounded shadow-xs">
+                              <span className="absolute bottom-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] font-semibold px-1 py-0.5 rounded shadow-xs">
                                 CAPA
                               </span>
                             )}
@@ -415,7 +415,7 @@ export function StepVariants() {
                               <button
                                 type="button"
                                 onClick={() => handleSetImageAsCover(index, displayUrl, imgIdx)}
-                                className="bg-amber-500 text-white p-1 rounded-full shadow-md hover:scale-105 transition-transform"
+                                className="bg-primary text-primary-foreground p-1 rounded-full shadow-md hover:scale-105 transition-transform"
                                 title="Definir como capa"
                               >
                                 <Star className="h-3 w-3 fill-current" />
@@ -427,7 +427,7 @@ export function StepVariants() {
                     )}
                     <label className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg border border-dashed border-border hover:border-primary flex flex-col items-center justify-center cursor-pointer text-muted-foreground hover:text-primary transition-colors bg-secondary/30">
                       <Upload className="h-4 w-4 mb-0.5" />
-                      <span className="text-[9px] font-medium">Add</span>
+                      <span className="text-[9px] font-medium">Foto</span>
                       <input
                         type="file"
                         multiple
@@ -438,7 +438,7 @@ export function StepVariants() {
                     </label>
                   </div>
                   {variantErr?.imagens && (
-                    <span className="text-[10px] text-destructive block">
+                    <span className="text-xs text-destructive block">
                       {variantErr.imagens.message}
                     </span>
                   )}
@@ -451,7 +451,7 @@ export function StepVariants() {
             type="button"
             variant="outline"
             onClick={handleAddVariant}
-            className="w-full h-9 sm:h-10 rounded-lg border-dashed border-border hover:border-primary text-xs font-semibold gap-1.5"
+            className="w-full min-h-11 rounded-xl border-dashed border-border hover:border-primary text-xs font-semibold gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" /> Adicionar nova variação
           </Button>

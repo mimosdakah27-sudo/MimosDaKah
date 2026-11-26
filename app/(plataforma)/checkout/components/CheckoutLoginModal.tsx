@@ -125,7 +125,7 @@ export function CheckoutLoginModal({
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
+        <DialogFooter className="sm:grid-flow-row">
           <Button
             type="button"
             className="w-full font-semibold"

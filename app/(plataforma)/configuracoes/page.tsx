@@ -17,7 +17,6 @@ import {
   Loader2,
   Mail,
   MapPin,
-  Package,
   Pencil,
   Phone,
   Save,
@@ -31,13 +30,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { yupResolver } from "@hookform/resolvers/yup";
 
+import { MelhorEnvioConnection } from "./melhor-envio-connection";
 import { useStoreConfig } from "./hooks/use-store-config";
 import { StoreConfig, storeConfigSchema } from "./types/store-settings";
 
 export default function ConfiguracoesPage() {
   const { config, isLoading, save, isConfigured } = useStoreConfig();
   const [isEditing, setIsEditing] = useState(false);
-  const [isConnected, setIsConnected] = useState<boolean | null>(null);
 
   const {
     control,
@@ -53,13 +52,6 @@ export default function ConfiguracoesPage() {
   const allowLocalDelivery = watch("allow_local_delivery");
 
   useEffect(() => {
-    fetch("/api/melhor-envio/status", { cache: "no-store" })
-      .then((res) => res.json())
-      .then((data) => setIsConnected(data.connected))
-      .catch(() => setIsConnected(false));
-  }, []);
-
-  useEffect(() => {
     if (config) reset(config);
     if (!isLoading && !isConfigured) setIsEditing(true);
   }, [config, reset, isLoading, isConfigured]);
@@ -72,42 +64,11 @@ export default function ConfiguracoesPage() {
     );
 
   return (
-    <div className="mx-auto space-y-6">
-      {/* Status Melhor Envio */}
-      {!isLoading && isConfigured && (
-        <div
-          className={`border p-5 rounded-xl shadow-sm ${isConnected ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}
-        >
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h2 className="text-base font-bold flex items-center gap-2 text-slate-900">
-                <Package size={20} /> Melhor Envio
-              </h2>
-              <p className="text-xs sm:text-sm mt-1 text-slate-600">
-                {isConnected === null
-                  ? "Verificando..."
-                  : isConnected
-                    ? "Loja conectada com sucesso."
-                    : "Loja desconectada da API."}
-              </p>
-            </div>
-            <Button
-              render={
-                <a href="/api/melhor-envio/login">
-                  {isConnected ? "Reconectar" : "Conectar Agora"}
-                </a>
-              }
-              nativeButton={false}
-              className="w-full sm:w-auto"
-            ></Button>
-          </div>
-        </div>
-      )}
-
+    <div className="mx-auto max-w-5xl space-y-6">
       {/* Título e Botão Editar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+          <h1 className="page-title">
             Configurações da Loja
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -124,8 +85,10 @@ export default function ConfiguracoesPage() {
         )}
       </div>
 
+      <MelhorEnvioConnection />
+
       {/* Card Principal */}
-      <div className="bg-card border border-border/50 rounded-2xl p-5 md:p-8 shadow-sm">
+      <div className="bg-card rounded-[var(--panel-radius)] border p-5 md:p-8">
         {!isEditing ? (
           <div className="space-y-8 md:space-y-12">
             <div className="border-b border-border/50 pb-6">
@@ -210,7 +173,7 @@ export default function ConfiguracoesPage() {
             className="space-y-8"
           >
             <div className="space-y-4">
-              <h3 className="font-semibold flex items-center gap-2 text-primary text-sm uppercase tracking-wider">
+              <h3 className="font-semibold flex items-center gap-2 text-brand-ink text-base">
                 <Truck size={16} /> Métodos de Entrega
               </h3>
               <div className="flex flex-col sm:flex-row gap-6 p-4 bg-muted/30 rounded-xl items-start sm:items-center flex-wrap">
@@ -287,7 +250,7 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div className="pt-6 border-t border-border/50 space-y-6">
-              <h3 className="font-semibold flex items-center gap-2 text-primary text-sm uppercase tracking-wider">
+              <h3 className="font-semibold flex items-center gap-2 text-brand-ink text-base">
                 <Building2 size={16} /> Dados de Identidade
               </h3>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -314,7 +277,7 @@ export default function ConfiguracoesPage() {
             </div>
 
             <div className="pt-6 border-t border-border/50 space-y-6">
-              <h3 className="font-semibold flex items-center gap-2 text-primary text-sm uppercase tracking-wider">
+              <h3 className="font-semibold flex items-center gap-2 text-brand-ink text-base">
                 <MapPin size={16} /> Dados de Localização
               </h3>
               <div className="grid sm:grid-cols-3 gap-4">
@@ -362,7 +325,7 @@ export default function ConfiguracoesPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 p-2 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="flex-1 gap-2"
               >
                 {isSubmitting ? (
                   <Loader2 className="animate-spin" />
@@ -403,7 +366,7 @@ function ControlledInput({
             className={className}
           />
           {errors[name] && (
-            <p className="text-xs text-red-500 font-bold">
+            <p className="text-xs text-destructive font-bold">
               {errors[name]?.message as string}
             </p>
           )}
@@ -416,7 +379,7 @@ function ControlledInput({
 function Section({ title, icon, children }: any) {
   return (
     <div className="space-y-4">
-      <h3 className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest text-muted-foreground">
+      <h3 className="flex items-center gap-2 font-semibold text-base text-brand-ink">
         {icon} {title}
       </h3>
       <div className="space-y-4">{children}</div>
