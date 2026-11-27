@@ -48,17 +48,8 @@ export function ProductMainLayout({
     <div className="flex flex-col lg:grid lg:grid-cols-12 gap-8 mt-4">
 
       <div className="min-w-0 lg:col-span-7">
-        <ProductImageCarousel key={currentVariant?.id ?? product.id} images={currentImages} alt={product.nome} />
-        {!!product.video_urls?.length && (
-          <section className="mt-4 space-y-3 rounded-2xl border bg-card p-4">
-            <h2 className="font-semibold">Vídeos do produto</h2>
-            {product.video_urls.map((url, index) => (
-              <video key={url} src={url} controls playsInline preload="none"
-                aria-label={`${product.nome}, vídeo ${index + 1}`}
-                className="aspect-video w-full rounded-xl bg-muted object-contain" />
-            ))}
-          </section>
-        )}
+        <ProductImageCarousel key={currentVariant?.id ?? product.id}
+          images={currentImages} videos={product.video_urls ?? []} alt={product.nome} />
       </div>
 
       <div className="lg:col-span-5 lg:row-span-3 flex flex-col gap-6">

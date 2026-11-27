@@ -1,14 +1,27 @@
 "use client";
 
 import useEmblaCarousel from "embla-carousel-react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { CatalogImage } from "./catalog-image";
 
-export function ProductImageCarousel({ images, alt }: { images: string[]; alt: string }) {
-  const multiple = images.length > 1;
+function ProductVideo({ src, label }: { src: string; label: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const video = ref.current;
+    return () => video?.pause();
+  }, []);
+  return <video ref={ref} src={src} aria-label={label} controls playsInline preload="metadata"
+    className="h-full w-full object-contain" />;
+}
+
+export function ProductImageCarousel({ images, videos, alt }: { images: string[]; videos: string[]; alt: string }) {
+  const photos = images.map((src, index) => ({ src, video: false, label: `Foto ${index + 1}` }));
+  const clips = videos.map((src, index) => ({ src, video: true, label: `Vídeo ${index + 1}` }));
+  const slides = [...photos.slice(0, 1), ...clips, ...photos.slice(1)];
+  const multiple = slides.length > 1;
   const [viewport, carousel] = useEmblaCarousel({
     loop: multiple,
     breakpoints: { "(prefers-reduced-motion: reduce)": { duration: 0 } },
@@ -31,16 +44,17 @@ export function ProductImageCarousel({ images, alt }: { images: string[]; alt: s
   return (
     <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border/60 bg-card p-3 shadow-sm sm:flex-row sm:gap-4 sm:p-4">
       <div className="group relative order-1 aspect-square w-full min-w-0 overflow-hidden rounded-xl bg-muted sm:order-2 sm:aspect-[5/4] sm:flex-1">
-        {images.length ? (
+        {slides.length ? (
           <div ref={viewport} className="h-full w-full touch-pan-y overflow-hidden">
             <div className="flex h-full">
-              {images.map((src, index) => {
+              {slides.map(({ src, video, label }, index) => {
                 const distance = Math.abs(index - selected);
                 // A Embla mede todos os slides. Só as fotos adjacentes precisam estar prontas para o gesto.
-                const nearby = index === selected || (carousel && Math.min(distance, images.length - distance) <= 1);
+                const nearby = index === selected || (carousel && Math.min(distance, slides.length - distance) <= 1);
                 return (
-                  <div key={src} className="relative h-full min-w-0 flex-[0_0_100%]">
-                    {nearby && <CatalogImage src={src} alt={`${alt}, foto ${index + 1}`} priority={index === 0} sizes={sizes} className="object-contain p-2" />}
+                  <div key={label} className="relative h-full min-w-0 flex-[0_0_100%]">
+                    {video && index === selected && <ProductVideo src={src} label={`${alt}, ${label}`} />}
+                    {!video && nearby && <CatalogImage src={src} alt={`${alt}, ${label}`} priority={index === 0} sizes={sizes} className="object-contain p-2" />}
                   </div>
                 );
               })}
@@ -51,10 +65,10 @@ export function ProductImageCarousel({ images, alt }: { images: string[]; alt: s
         )}
 
         {multiple && <>
-          <button type="button" aria-label="Imagem anterior" onClick={() => carousel?.scrollPrev()} className={cn(arrowClass, "left-2")}>
+          <button type="button" aria-label="Mídia anterior" onClick={() => carousel?.scrollPrev()} className={cn(arrowClass, "left-2")}>
             <ChevronLeft size={19} aria-hidden="true" />
           </button>
-          <button type="button" aria-label="Próxima imagem" onClick={() => carousel?.scrollNext()} className={cn(arrowClass, "right-2")}>
+          <button type="button" aria-label="Próxima mídia" onClick={() => carousel?.scrollNext()} className={cn(arrowClass, "right-2")}>
             <ChevronRight size={19} aria-hidden="true" />
           </button>
         </>}
@@ -62,11 +76,13 @@ export function ProductImageCarousel({ images, alt }: { images: string[]; alt: s
 
       {multiple && (
         <div className="order-2 flex max-h-[450px] gap-2 overflow-x-auto py-1 sm:order-1 sm:flex-col sm:overflow-y-auto sm:py-0">
-          {images.map((src, index) => (
-            <button key={src} type="button" onClick={() => carousel?.scrollTo(index, true)}
-              aria-label={`Selecionar imagem ${index + 1}`} aria-pressed={index === selected}
+          {slides.map(({ src, video, label }, index) => (
+            <button key={label} type="button" onClick={() => carousel?.scrollTo(index, true)}
+              aria-label={`Selecionar ${label.toLowerCase()}`} aria-pressed={index === selected}
               className="relative size-14 shrink-0 overflow-hidden rounded-lg border-2 border-border bg-muted opacity-75 hover:opacity-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand-action aria-pressed:border-brand-action aria-pressed:opacity-100 sm:size-16">
-              <CatalogImage src={src} alt="" sizes="(min-width: 640px) 64px, 56px" quality={60} className="object-cover" compact />
+              {video ? <span className="flex h-full flex-col items-center justify-center gap-1 text-brand-action">
+                <Play size={16} aria-hidden="true" /><span className="text-xs">{label}</span>
+              </span> : <CatalogImage src={src} alt="" sizes="(min-width: 640px) 64px, 56px" quality={60} className="object-cover" compact />}
             </button>
           ))}
         </div>
