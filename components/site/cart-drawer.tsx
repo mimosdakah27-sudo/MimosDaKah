@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CatalogImage } from "@/components/site/catalog-image";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Minus, Plus, Trash2, X, MessageCircle, HelpCircle } from "lucide-react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/store/cart";
 import { formatBRL } from "@/lib/utils";
@@ -12,6 +13,30 @@ export function CartDrawer() {
   const router = useRouter();
   const { items, open, setOpen, updateQty, remove } = useCart();
   
+  useEffect(() => {
+    const syncCart = () => setOpen(Boolean(window.history.state?.mimosCart));
+    window.addEventListener("popstate", syncCart);
+    if (window.history.state?.mimosCart) syncCart();
+    return () => window.removeEventListener("popstate", syncCart);
+  }, [setOpen]);
+
+  useEffect(() => {
+    if (open && window.matchMedia("(max-width: 767px), (pointer: coarse)").matches && !window.history.state?.mimosCart) {
+      window.history.pushState({ mimosCart: true }, "", window.location.href);
+    }
+  }, [open]);
+
+  function closeCart() {
+    if (window.history.state?.mimosCart) window.history.back();
+    else setOpen(false);
+  }
+
+  function continueOrder() {
+    setOpen(false);
+    if (window.history.state?.mimosCart) router.replace("/checkout");
+    else router.push("/checkout");
+  }
+
   const subtotal = items.reduce((acc, i) => {
     const regularPrice = Number(i.product.preco) || 0;
     const promoPrice = i.product.preco_promocional ? Number(i.product.preco_promocional) : 0;
@@ -22,7 +47,7 @@ export function CartDrawer() {
   const totalQty = items.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={(next) => next ? setOpen(true) : closeCart()}>
       <SheetContent side="right" showCloseButton={false} className="max-w-md gap-0 bg-card data-[side=right]:w-full">
             <header className="flex items-center justify-between p-6 border-b border-border">
               <div>
@@ -30,7 +55,7 @@ export function CartDrawer() {
                 <p className="text-sm text-muted-foreground">{totalQty} {totalQty === 1 ? "item" : "itens"}</p>
               </div>
               <button 
-                onClick={() => setOpen(false)} 
+                onClick={closeCart}
                 className="size-11 rounded-md hover:bg-accent flex items-center justify-center"
                 aria-label="Fechar"
               >
@@ -141,7 +166,7 @@ export function CartDrawer() {
                   </div>
                 </div>
                 <Button size="lg"
-                  onClick={() => { setOpen(false); router.push("/checkout"); }}
+                  onClick={continueOrder}
                   className="flow-action"
                 >
                   Continuar pedido

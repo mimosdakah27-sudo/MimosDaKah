@@ -17,7 +17,7 @@ const publicSansHeading = Public_Sans({subsets:['latin'],variable:'--font-headin
 const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mimosdakah.com.br"),
+  metadataBase: new URL(process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "https://mimosdakah.com.br"),
 
   title: {
     default: "Mimos da Kah — Lembrancinhas, Camisetas Personalizadas e Variedades",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://mimosdakah.com.br",
+    url: "/",
     siteName: "Mimos da Kah",
     title: "Mimos da Kah — Lembrancinhas, Camisetas Personalizadas e Variedades",
     description:

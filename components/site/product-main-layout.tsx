@@ -96,19 +96,6 @@ export function ProductMainLayout({
             </div>
           )}
 
-          {product.weight !== null &&
-            product.weight !== undefined && (
-              <div className="flex justify-between py-2 border-b border-border/45">
-                <span className="text-muted-foreground">
-                  Peso
-                </span>
-
-                <span className="font-medium text-foreground">
-                  {product.weight} kg
-                </span>
-              </div>
-            )}
-
           {product.garantia_dias !== null &&
             product.garantia_dias > 0 && product.garantia_tipo !== "nenhuma" && (
               <div className="flex justify-between py-2 border-b border-border/45">
