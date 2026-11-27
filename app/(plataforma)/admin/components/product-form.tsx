@@ -21,6 +21,7 @@ import {
 import { useAdminProduct } from "../hooks/use-admin-product";
 
 // Sub-etapas
+import { ProductVideos } from "./steps/product-videos";
 import { StepBasicInfo } from "./steps/step-basic-info";
 import { StepVariants } from "./steps/step-variants";
 import { StepDescriptionLogistics } from "./steps/step-description-logistics";
@@ -34,7 +35,7 @@ interface ProductFormProps {
 
 const STEPS = [
   { id: 1, label: "Informações básicas" },
-  { id: 2, label: "Variações e fotos" },
+  { id: 2, label: "Variações e mídia" },
   { id: 4, label: "Descrição e logística" },
   { id: 5, label: "Preço e garantia" },
 ];
@@ -171,7 +172,7 @@ export function ProductForm(props: ProductFormProps) {
         <FormProvider {...methods}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
             {currentStep === 1 && <StepBasicInfo />}
-            {currentStep === 2 && <StepVariants />}
+            {currentStep === 2 && <><StepVariants /><ProductVideos /></>}
             {currentStep === 4 && <StepDescriptionLogistics />}
             {currentStep === 5 && <StepPricingWarranty />}
 

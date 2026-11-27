@@ -101,6 +101,23 @@ export async function uploadStorageFile(
 // PRODUTOS
 // ============================================================
 
+// Uma nova tentativa com o mesmo arquivo reutiliza o upload concluído.
+const uploadedVideos = new WeakMap<File, string>();
+
+async function saveVideo(source: File | string) {
+  if (typeof source === "string") return source;
+  const previous = uploadedVideos.get(source);
+  if (previous) return previous;
+  const bucket = supabase.storage.from("product-videos");
+  const extension = source.type === "video/webm" ? "webm" : "mp4";
+  const path = `${crypto.randomUUID()}.${extension}`;
+  const { error } = await bucket.upload(path, source, { contentType: source.type });
+  if (error) throw new Error(`Falha ao enviar o vídeo ${source.name}. Tente novamente.`);
+  const url: string = bucket.getPublicUrl(path).data.publicUrl;
+  uploadedVideos.set(source, url);
+  return url;
+}
+
 export async function deleteProductService(
   id: string,
 ) {
@@ -228,7 +245,11 @@ export async function saveProductWithGallery({
   // PRODUTO
   // ==========================================================
 
+  const videoUrls = [];
+  for (const video of form.videos ?? []) videoUrls.push(await saveVideo(video));
+
   const productPayload = {
+    video_urls: videoUrls,
     nome: form.nome,
 
     descricao: form.descricao,

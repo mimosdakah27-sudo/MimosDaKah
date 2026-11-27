@@ -165,6 +165,7 @@ export const step5Schema = yup.object({
 
 export const productFormSchema = yup.object({
   ...step1Schema.fields,
+  videos: yup.array().of(yup.mixed<File | string>().defined()).default([]),
   ...step2Schema.fields,
   ...step4Schema.fields,
   ...step5Schema.fields,

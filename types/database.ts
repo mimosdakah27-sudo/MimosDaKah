@@ -322,6 +322,7 @@ export type Database = {
           garantia_tipo: string | null
           height: number | null
           id: string
+          video_urls: string[]
           imagem_url: string
           length: number | null
           nome: string
@@ -342,6 +343,7 @@ export type Database = {
           garantia_tipo?: string | null
           height?: number | null
           id?: string
+          video_urls?: string[]
           imagem_url: string
           length?: number | null
           nome: string
@@ -362,6 +364,7 @@ export type Database = {
           garantia_tipo?: string | null
           height?: number | null
           id?: string
+          video_urls?: string[]
           imagem_url?: string
           length?: number | null
           nome?: string

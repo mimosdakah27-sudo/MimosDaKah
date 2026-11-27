@@ -118,6 +118,7 @@ export function useAdminProduct(
     garantia_tipo: (product?.garantia_tipo as "vendedor" | "fabrica" | "nenhuma") ?? "vendedor",
     garantia_dias: product?.garantia_dias ?? 0,
 
+    videos: product?.video_urls ?? [],
     variants: variantsFormState as any,
   };
 
